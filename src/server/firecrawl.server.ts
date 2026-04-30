@@ -12,7 +12,8 @@ export interface RawLead {
   category?: string;
   rating?: number;
   reviews_count?: number;
-  website?: string;
+  business_website?: string;
+  listing_url?: string;
 }
 
 const leadJsonSchema = {
@@ -31,7 +32,8 @@ const leadJsonSchema = {
           category: { type: "string", description: "Business category or service type" },
           rating: { type: "number", description: "Star rating 0-5" },
           reviews_count: { type: "number" },
-          website: { type: "string" },
+          business_website: { type: "string", description: "The business's own website (NOT the directory listing URL)" },
+          listing_url: { type: "string", description: "URL of the listing page on the directory site" },
         },
       },
     },
@@ -39,19 +41,69 @@ const leadJsonSchema = {
   required: ["leads"],
 };
 
-function buildSourceUrl(source: Source, query: string, city: string | null): string {
+function buildSourceUrl(source: Source, query: string, city: string | null, page: number): string {
   const q = encodeURIComponent(query);
   const c = encodeURIComponent((city || "").trim());
   switch (source) {
     case "gmaps":
       return `https://www.google.com/maps/search/${q}${c ? `+${c}` : ""}`;
-    case "justdial":
-      // JustDial city-scoped search; falls back to global search if no city
-      return c
-        ? `https://www.justdial.com/${c}/${q.replace(/%20/g, "-")}`
-        : `https://www.justdial.com/search?q=${q}`;
+    case "justdial": {
+      const base = c ? `https://www.justdial.com/${c}/${q.replace(/%20/g, "-")}` : `https://www.justdial.com/search?q=${q}`;
+      return page > 1 ? `${base}/page-${page}` : base;
+    }
     case "indiamart":
-      return `https://dir.indiamart.com/search.mp?ss=${q}${c ? `&cq=${c}` : ""}`;
+      return `https://dir.indiamart.com/search.mp?ss=${q}${c ? `&cq=${c}` : ""}${page > 1 ? `&start=${(page - 1) * 25}` : ""}`;
+  }
+}
+
+function buildPrompt(opts: { limit: number; city: string | null; query: string }): string {
+  const cityClause = opts.city
+    ? ` Only include businesses physically located in or directly serving "${opts.city}". Reject results from neighbouring cities.`
+    : "";
+  return `Extract up to ${opts.limit} business listings matching "${opts.query}".${cityClause} For each listing return: name, phone (digits only), address, city, category, rating, reviews_count, business_website (the company's own site, NOT the directory page), and listing_url (the directory page URL). Skip ads, sponsored slots, and navigation items. Only real businesses visible in the listings.`;
+}
+
+async function scrapeOnce(opts: {
+  source: Source;
+  url: string;
+  prompt: string;
+  limit: number;
+  apiKey: string;
+}): Promise<{ leads: RawLead[]; error?: string }> {
+  // JustDial often hides phone behind "Show Number" — click before extract.
+  const actions =
+    opts.source === "justdial"
+      ? [
+          { type: "wait", milliseconds: 2000 },
+          { type: "click", selector: "span.callNowAnchor, .callcontent, [data-track='Call']", all: true },
+          { type: "wait", milliseconds: 1500 },
+        ]
+      : undefined;
+
+  const body: Record<string, unknown> = {
+    url: opts.url,
+    formats: [{ type: "json", schema: leadJsonSchema, prompt: opts.prompt }],
+    onlyMainContent: true,
+    waitFor: opts.source === "gmaps" ? 3500 : 2000,
+    timeout: 75000,
+  };
+  if (actions) body.actions = actions;
+
+  try {
+    const res = await fetch(`${FIRECRAWL_BASE}/scrape`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${opts.apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { leads: [], error: `Firecrawl ${res.status}: ${text.slice(0, 300)}` };
+    }
+    const json: unknown = await res.json();
+    const data = (json as { data?: { json?: { leads?: RawLead[] } } }).data;
+    return { leads: data?.json?.leads ?? [] };
+  } catch (err) {
+    return { leads: [], error: err instanceof Error ? err.message : "Unknown scrape error" };
   }
 }
 
@@ -64,53 +116,77 @@ export async function scrapeSource(opts: {
   const apiKey = process.env.FIRECRAWL_API_KEY;
   if (!apiKey) throw new Error("FIRECRAWL_API_KEY is not configured");
 
-  const sourceUrl = buildSourceUrl(opts.source, opts.query, opts.city);
+  const prompt = buildPrompt(opts);
+  const firstUrl = buildSourceUrl(opts.source, opts.query, opts.city, 1);
 
-  const body = {
-    url: sourceUrl,
-    formats: [
-      {
-        type: "json",
-        schema: leadJsonSchema,
-        prompt: `Extract up to ${opts.limit} business listings from this page. For each listing, return name, phone, address, city, category, rating, reviews_count, website. Only include real businesses visible in the listings — skip ads and navigation.`,
-      },
-    ],
-    onlyMainContent: true,
-    waitFor: opts.source === "gmaps" ? 3500 : 2000,
-    timeout: 60000,
-  };
+  // Page 1
+  const all: RawLead[] = [];
+  const errors: string[] = [];
+  const first = await scrapeOnce({ source: opts.source, url: firstUrl, prompt, limit: opts.limit, apiKey });
+  if (first.error) errors.push(first.error);
+  all.push(...first.leads);
 
-  try {
-    const res = await fetch(`${FIRECRAWL_BASE}/scrape`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      return { leads: [], sourceUrl, error: `Firecrawl ${res.status}: ${text.slice(0, 300)}` };
+  // Paginate JustDial / IndiaMART up to ~3 pages until we have enough
+  if ((opts.source === "justdial" || opts.source === "indiamart") && all.length < opts.limit) {
+    for (let p = 2; p <= 3 && all.length < opts.limit; p++) {
+      const url = buildSourceUrl(opts.source, opts.query, opts.city, p);
+      const next = await scrapeOnce({
+        source: opts.source,
+        url,
+        prompt: buildPrompt({ ...opts, limit: opts.limit - all.length }),
+        limit: opts.limit - all.length,
+        apiKey,
+      });
+      if (next.error) {
+        errors.push(`p${p}: ${next.error}`);
+        break;
+      }
+      if (next.leads.length === 0) break;
+      all.push(...next.leads);
     }
-
-    const json: unknown = await res.json();
-    // Firecrawl v2 wraps result in { success, data: { json: {...}, metadata, ... } }
-    const data = (json as { data?: { json?: { leads?: RawLead[] } } }).data;
-    const leads = data?.json?.leads ?? [];
-    return { leads: leads.slice(0, opts.limit), sourceUrl };
-  } catch (err) {
-    return {
-      leads: [],
-      sourceUrl,
-      error: err instanceof Error ? err.message : "Unknown scrape error",
-    };
   }
+
+  return {
+    leads: all.slice(0, opts.limit),
+    sourceUrl: firstUrl,
+    error: all.length === 0 && errors.length ? errors.join(" | ") : undefined,
+  };
 }
 
 export function dedupeHash(source: Source, name: string | undefined, phone: string | undefined): string {
   const p = (phone || "").replace(/\D/g, "");
   if (p.length >= 7) return `phone:${p}`;
   return `${source}:${(name || "").trim().toLowerCase()}`;
+}
+
+// ---------- Scoring ----------
+
+export interface ScoreResult {
+  score: number;
+  reasons: Record<string, number>;
+}
+
+export function scoreLead(l: {
+  phone?: string | null;
+  email?: string | null;
+  email_enriched?: string | null;
+  rating?: number | null;
+  reviews_count?: number | null;
+  website?: string | null;
+  category?: string | null;
+}, queryCategory?: string): ScoreResult {
+  const reasons: Record<string, number> = {};
+  if (l.phone && l.phone.replace(/\D/g, "").length >= 10) reasons.phone = 30;
+  if (l.email || l.email_enriched) reasons.email = 15;
+  if (typeof l.rating === "number" && l.rating >= 4) reasons.rating = 15;
+  else if (typeof l.rating === "number" && l.rating >= 3) reasons.rating = 7;
+  if (typeof l.reviews_count === "number" && l.reviews_count >= 20) reasons.reviews = 10;
+  else if (typeof l.reviews_count === "number" && l.reviews_count >= 5) reasons.reviews = 5;
+  if (l.website && /^https?:\/\//i.test(l.website)) reasons.website = 10;
+  if (queryCategory && l.category && l.category.toLowerCase().includes(queryCategory.toLowerCase())) {
+    reasons.category_match = 10;
+  }
+  // Floor of 10 if we have at least name+phone, to avoid all-zero ranking
+  const total = Math.min(100, Object.values(reasons).reduce((a, b) => a + b, 0));
+  return { score: total, reasons };
 }
