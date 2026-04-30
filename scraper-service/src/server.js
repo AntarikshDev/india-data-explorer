@@ -1,20 +1,9 @@
 // Self-hosted scraper service.
 // POST /scrape  body: { source, query, city, limit }
 // Auth: optional `Authorization: Bearer <SCRAPER_SERVICE_TOKEN>` header.
-//
-// Deploy:
-//   1) Push this folder to Railway / Render / Fly / a VPS.
-//   2) Set env vars:
-//        PORT (provided by host)
-//        SCRAPER_SERVICE_TOKEN  (any random string; share with the Lovable app)
-//   3) In the Lovable app, add secrets:
-//        SCRAPER_SERVICE_URL    = https://<your-deploy>.up.railway.app
-//        SCRAPER_SERVICE_TOKEN  = <same token>
-//   The Lovable app will automatically use this service instead of Firecrawl
-//   whenever SCRAPER_SERVICE_URL is set.
 
 import express from "express";
-import { chromium } from "playwright";
+import { newHumanContext, getBrowser } from "./browser.js";
 import { scrapeGoogleMaps } from "./sources/gmaps.js";
 import { scrapeJustDial } from "./sources/justdial.js";
 import { scrapeIndiaMart } from "./sources/indiamart.js";
@@ -24,22 +13,14 @@ app.use(express.json({ limit: "1mb" }));
 
 const TOKEN = process.env.SCRAPER_SERVICE_TOKEN || "";
 
-// Single shared browser instance — cheaper & faster than one per request.
-let browserPromise = null;
-function getBrowser() {
-  if (!browserPromise) {
-    browserPromise = chromium.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
-    }).catch((error) => {
-      browserPromise = null;
-      throw error;
-    });
+app.get("/health", async (_req, res) => {
+  try {
+    await getBrowser();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err && err.message });
   }
-  return browserPromise;
-}
-
-app.get("/health", (_req, res) => res.json({ ok: true }));
+});
 
 app.post("/scrape", async (req, res) => {
   if (TOKEN) {
@@ -57,15 +38,9 @@ app.post("/scrape", async (req, res) => {
 
   let context;
   try {
-    const browser = await getBrowser();
-    context = await browser.newContext({
-      userAgent:
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-      viewport: { width: 1366, height: 850 },
-      locale: "en-IN",
-    });
+    context = await newHumanContext();
     const page = await context.newPage();
-    page.setDefaultTimeout(45000);
+    page.setDefaultTimeout(60000);
 
     let result;
     if (source === "gmaps") {
