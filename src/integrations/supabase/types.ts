@@ -241,10 +241,13 @@ export type Database = {
           city: string | null
           created_at: string
           error: string | null
+          finished_at: string | null
           id: string
+          progress: Json
           query: string
           results_per_source: number
           sources: string[]
+          started_at: string | null
           status: string
           total_count: number
           updated_at: string
@@ -254,10 +257,13 @@ export type Database = {
           city?: string | null
           created_at?: string
           error?: string | null
+          finished_at?: string | null
           id?: string
+          progress?: Json
           query: string
           results_per_source?: number
           sources?: string[]
+          started_at?: string | null
           status?: string
           total_count?: number
           updated_at?: string
@@ -267,10 +273,13 @@ export type Database = {
           city?: string | null
           created_at?: string
           error?: string | null
+          finished_at?: string | null
           id?: string
+          progress?: Json
           query?: string
           results_per_source?: number
           sources?: string[]
+          started_at?: string | null
           status?: string
           total_count?: number
           updated_at?: string

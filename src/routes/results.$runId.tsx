@@ -10,9 +10,10 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { SOURCE_LABELS, type Lead, type ScrapeRun, type Source } from "@/lib/leadTypes";
+import { SOURCE_LABELS, type Lead, type ScrapeRun, type Source, type SourceProgress } from "@/lib/leadTypes";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Download, Send, Trash2, ExternalLink, ArrowLeft } from "lucide-react";
+import { Download, Send, Trash2, ExternalLink, ArrowLeft, Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/results/$runId")({
   component: () => (
@@ -50,14 +51,25 @@ function ResultsPage() {
   useEffect(() => {
     load();
     const ch = supabase
-      .channel(`leads-${runId}`)
+      .channel(`run-${runId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `run_id=eq.${runId}` }, () => load())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "scrape_runs", filter: `id=eq.${runId}` }, (payload) => {
+        setRun(payload.new as ScrapeRun);
+      })
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId]);
+
+  // Tick every second so elapsed time updates while running
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (run?.status !== "running" && run?.status !== "queued") return;
+    const i = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(i);
+  }, [run?.status]);
 
   const filtered = leads.filter((l) => {
     if (!filter.trim()) return true;
@@ -150,6 +162,8 @@ function ResultsPage() {
         </div>
       </div>
 
+      {run && <LiveProgress run={run} leadsCount={leads.length} />}
+
       <Card className="p-3">
         <div className="flex items-center gap-3 flex-wrap">
           <Input placeholder="Filter by name, phone, address…" value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-sm" />
@@ -223,5 +237,95 @@ function ResultsPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return "0s";
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rs = s % 60;
+  return `${m}m ${rs}s`;
+}
+
+function LiveProgress({ run, leadsCount }: { run: ScrapeRun; leadsCount: number }) {
+  const sources = run.sources;
+  const progress = run.progress ?? {};
+  const isActive = run.status === "running" || run.status === "queued";
+  const startedMs = run.started_at ? new Date(run.started_at).getTime() : null;
+  const finishedMs = run.finished_at ? new Date(run.finished_at).getTime() : null;
+  const elapsedMs = startedMs ? (finishedMs ?? Date.now()) - startedMs : 0;
+
+  const target = run.results_per_source * sources.length;
+  const overallPct = target > 0 ? Math.min(100, Math.round((leadsCount / target) * 100)) : 0;
+
+  // ETA: extrapolate from per-second rate
+  let eta: string | null = null;
+  if (isActive && elapsedMs > 3000 && leadsCount > 0 && leadsCount < target) {
+    const rate = leadsCount / (elapsedMs / 1000);
+    const remaining = (target - leadsCount) / rate;
+    eta = formatDuration(remaining * 1000);
+  }
+
+  return (
+    <Card className="p-4 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          {isActive ? (
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          ) : run.status === "done" ? (
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+          ) : (
+            <XCircle className="h-4 w-4 text-destructive" />
+          )}
+          <span className="font-medium">
+            {isActive ? "Scraping live…" : run.status === "done" ? "Scrape complete" : "Scrape failed"}
+          </span>
+          <span className="text-sm text-muted-foreground tabular-nums">
+            {leadsCount} / ~{target} leads
+          </span>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground tabular-nums">
+          <span className="inline-flex items-center gap-1">
+            <Clock className="h-3 w-3" /> {formatDuration(elapsedMs)}
+          </span>
+          {eta && <span>· ETA {eta}</span>}
+        </div>
+      </div>
+
+      <Progress value={overallPct} />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {sources.map((s) => {
+          const p: SourceProgress = progress[s] ?? { status: "pending", inserted: 0 };
+          const sStart = p.started_at ? new Date(p.started_at).getTime() : null;
+          const sEnd = p.finished_at ? new Date(p.finished_at).getTime() : null;
+          const sElapsed = sStart ? (sEnd ?? Date.now()) - sStart : 0;
+          const pct = run.results_per_source > 0
+            ? Math.min(100, Math.round((p.inserted / run.results_per_source) * 100))
+            : 0;
+          return (
+            <div key={s} className="rounded-lg border p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium">{SOURCE_LABELS[s as Source]}</span>
+                {p.status === "running" && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                {p.status === "done" && <CheckCircle2 className="h-3 w-3 text-primary" />}
+                {p.status === "failed" && <XCircle className="h-3 w-3 text-destructive" />}
+                {p.status === "pending" && <Clock className="h-3 w-3 text-muted-foreground" />}
+              </div>
+              <Progress value={pct} className="h-1.5" />
+              <div className="flex items-center justify-between text-xs text-muted-foreground tabular-nums">
+                <span>{p.inserted} / {run.results_per_source}</span>
+                {sStart && <span>{formatDuration(sElapsed)}</span>}
+              </div>
+              {p.error && (
+                <p className="text-xs text-destructive line-clamp-2" title={p.error}>{p.error}</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }

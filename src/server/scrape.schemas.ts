@@ -8,3 +8,7 @@ export const StartSchema = z.object({
   sources: z.array(SourceEnum).min(1).max(3),
   resultsPerSource: z.number().int().min(5).max(50).default(25),
 });
+
+export const ExecuteSchema = z.object({
+  runId: z.string().uuid(),
+});

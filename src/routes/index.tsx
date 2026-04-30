@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { startScrapeRun } from "@/server/scrape.functions";
+import { createScrapeRun, executeScrapeRun } from "@/server/scrape.functions";
 import { AppShell } from "@/components/AppShell";
 import { GeoPicker, emptyGeoSelection, type GeoSelection } from "@/components/GeoPicker";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,8 @@ const ALL_SOURCES: Source[] = ["gmaps", "justdial", "indiamart"];
 
 function SearchPage() {
   const navigate = useNavigate();
-  const startFn = useServerFn(startScrapeRun);
+  const createRunFn = useServerFn(createScrapeRun);
+  const executeRunFn = useServerFn(executeScrapeRun);
   const [query, setQuery] = useState("");
   const [geo, setGeo] = useState<GeoSelection>(emptyGeoSelection);
   const [sources, setSources] = useState<Source[]>(["justdial", "indiamart"]);
@@ -55,7 +56,7 @@ function SearchPage() {
     }
     setRunning(true);
     try {
-      const res = await startFn({
+      const res = await createRunFn({
         data: {
           query: query.trim(),
           city: derivedCity,
@@ -64,13 +65,17 @@ function SearchPage() {
         },
       });
       if (!res.runId) {
-        toast.error(res.errors?.[0] ?? "Scrape failed");
+        toast.error(res.error ?? "Could not start scrape");
         return;
       }
-      toast.success(`Scrape complete — ${res.total} leads`);
+      // Fire-and-forget the actual scrape — the results page subscribes via realtime.
+      executeRunFn({ data: { runId: res.runId } }).catch((err) => {
+        console.error("executeScrapeRun failed:", err);
+      });
+      toast.success("Scrape started — streaming results live");
       navigate({ to: "/results/$runId", params: { runId: res.runId } });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Scrape failed");
+      toast.error(e instanceof Error ? e.message : "Could not start scrape");
     } finally {
       setRunning(false);
     }
