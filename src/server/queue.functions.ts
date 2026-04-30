@@ -63,6 +63,7 @@ export const getQueue = createServerFn({ method: "POST" })
       .select("*")
       .eq("user_id", userId)
       .not("phone", "is", null)
+      .neq("phone", "")
       .gte("score", minScore);
 
     if (stateCode) q = q.eq("state_code", stateCode);
