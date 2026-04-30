@@ -63,6 +63,10 @@ function SearchPage() {
           resultsPerSource: perSource,
         },
       });
+      if (!res.runId) {
+        toast.error(res.errors?.[0] ?? "Scrape failed");
+        return;
+      }
       toast.success(`Scrape complete — ${res.total} leads`);
       navigate({ to: "/results/$runId", params: { runId: res.runId } });
     } catch (e) {
