@@ -162,6 +162,8 @@ function ResultsPage() {
         </div>
       </div>
 
+      {run && <LiveProgress run={run} leadsCount={leads.length} />}
+
       <Card className="p-3">
         <div className="flex items-center gap-3 flex-wrap">
           <Input placeholder="Filter by name, phone, address…" value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-sm" />
