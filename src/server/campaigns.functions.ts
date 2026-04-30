@@ -99,7 +99,11 @@ export const updateCampaignStatus = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const patch: Record<string, unknown> = { status: data.status };
+    const patch: {
+      status: typeof data.status;
+      current_state_code?: string;
+      current_district_id?: string | null;
+    } = { status: data.status };
     if (data.currentStateCode) {
       patch.current_state_code = data.currentStateCode;
       patch.current_district_id = null;
