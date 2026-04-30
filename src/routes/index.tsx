@@ -32,7 +32,8 @@ const ALL_SOURCES: Source[] = ["gmaps", "justdial", "indiamart"];
 
 function SearchPage() {
   const navigate = useNavigate();
-  const startFn = useServerFn(startScrapeRun);
+  const createRunFn = useServerFn(createScrapeRun);
+  const executeRunFn = useServerFn(executeScrapeRun);
   const [query, setQuery] = useState("");
   const [geo, setGeo] = useState<GeoSelection>(emptyGeoSelection);
   const [sources, setSources] = useState<Source[]>(["justdial", "indiamart"]);
