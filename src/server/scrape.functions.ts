@@ -35,7 +35,7 @@ export const createScrapeRun = createServerFn({ method: "POST" })
     if (error || !run) {
       return { runId: null as string | null, error: error?.message ?? "Failed to create run" };
     }
-    return { runId: runRow.id, error: null as string | null };
+    return { runId: run.id, error: null as string | null };
   });
 
 // 2) Execute the scrape. The client fires this and does NOT await it — the UI
