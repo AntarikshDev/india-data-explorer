@@ -108,13 +108,20 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
       }
 
       let inserted = 0;
+      let rejectedNoPhone = 0;
       for (const raw of leads) {
-        const hash = dedupeHash(source, raw.name, raw.phone);
+        // Strict phone gate: only keep leads with a real Indian mobile.
+        const validPhone = normalizeIndianMobile(raw.phone);
+        if (!validPhone) {
+          rejectedNoPhone++;
+          continue;
+        }
+        const hash = dedupeHash(source, raw.name, validPhone);
         const website = raw.business_website ?? null;
         const listing = raw.listing_url ?? null;
         const { score, reasons } = scoreLead(
           {
-            phone: raw.phone,
+            phone: validPhone,
             email: raw.email,
             rating: raw.rating,
             reviews_count: raw.reviews_count,
@@ -128,7 +135,7 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
             user_id: userId,
             run_id: runRow.id,
             name: raw.name ?? null,
-            phone: raw.phone ?? null,
+            phone: validPhone,
             email: raw.email ?? null,
             address: raw.address ?? null,
             city: raw.city ?? runRow.city ?? null,
@@ -152,6 +159,9 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
             await setSourceProgress(source, { status: "running", inserted });
           }
         }
+      }
+      if (rejectedNoPhone > 0) {
+        console.log(`[${source}] dropped ${rejectedNoPhone} leads with invalid/junk phone`);
       }
 
       await setSourceProgress(source, {
