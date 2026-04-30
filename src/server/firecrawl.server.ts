@@ -108,8 +108,8 @@ async function scrapeOnce(opts: {
     url: opts.url,
     formats: [{ type: "json", schema: leadJsonSchema, prompt: opts.prompt }],
     onlyMainContent: true,
-    waitFor: opts.source === "gmaps" ? 3500 : 2000,
-    timeout: 75000,
+    waitFor: opts.source === "gmaps" ? 5000 : 2500,
+    timeout: opts.source === "gmaps" ? 120000 : 90000,
   };
   if (actions) body.actions = actions;
 
