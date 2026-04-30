@@ -173,30 +173,39 @@ export type Database = {
         Row: {
           api_key: string | null
           created_at: string
+          crm_webhook_url: string | null
           daily_credit_cap: number
+          daily_sync_enabled: boolean
           enabled: boolean
           endpoint_url: string | null
           id: string
+          last_daily_sync_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           api_key?: string | null
           created_at?: string
+          crm_webhook_url?: string | null
           daily_credit_cap?: number
+          daily_sync_enabled?: boolean
           enabled?: boolean
           endpoint_url?: string | null
           id?: string
+          last_daily_sync_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           api_key?: string | null
           created_at?: string
+          crm_webhook_url?: string | null
           daily_credit_cap?: number
+          daily_sync_enabled?: boolean
           enabled?: boolean
           endpoint_url?: string | null
           id?: string
+          last_daily_sync_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -278,17 +287,100 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_edits: {
+        Row: {
+          created_at: string
+          field: string
+          id: string
+          lead_id: string
+          new_value: string | null
+          old_value: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          field: string
+          id?: string
+          lead_id: string
+          new_value?: string | null
+          old_value?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          field?: string
+          id?: string
+          lead_id?: string
+          new_value?: string | null
+          old_value?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lead_sets: {
+        Row: {
+          category_query: string | null
+          created_at: string
+          district_id: string | null
+          district_name: string | null
+          id: string
+          locality_id: string | null
+          locality_name: string | null
+          min_score: number
+          name: string
+          name_query: string | null
+          state_code: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category_query?: string | null
+          created_at?: string
+          district_id?: string | null
+          district_name?: string | null
+          id?: string
+          locality_id?: string | null
+          locality_name?: string | null
+          min_score?: number
+          name: string
+          name_query?: string | null
+          state_code?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category_query?: string | null
+          created_at?: string
+          district_id?: string | null
+          district_name?: string | null
+          id?: string
+          locality_id?: string | null
+          locality_name?: string | null
+          min_score?: number
+          name?: string
+          name_query?: string | null
+          state_code?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           address: string | null
           category: string | null
           city: string | null
           dedupe_hash: string
+          district_id: string | null
+          district_name: string | null
           email: string | null
           email_enriched: string | null
           id: string
           listing_url: string | null
+          locality_id: string | null
+          locality_name: string | null
           name: string | null
+          notes: string | null
           owner_name: string | null
           phone: string | null
           pushed_to_crm_at: string | null
@@ -301,6 +393,7 @@ export type Database = {
           scraped_at: string
           source: string
           source_url: string | null
+          state_code: string | null
           user_id: string
           website: string | null
           whatsapp: string | null
@@ -310,11 +403,16 @@ export type Database = {
           category?: string | null
           city?: string | null
           dedupe_hash: string
+          district_id?: string | null
+          district_name?: string | null
           email?: string | null
           email_enriched?: string | null
           id?: string
           listing_url?: string | null
+          locality_id?: string | null
+          locality_name?: string | null
           name?: string | null
+          notes?: string | null
           owner_name?: string | null
           phone?: string | null
           pushed_to_crm_at?: string | null
@@ -327,6 +425,7 @@ export type Database = {
           scraped_at?: string
           source: string
           source_url?: string | null
+          state_code?: string | null
           user_id: string
           website?: string | null
           whatsapp?: string | null
@@ -336,11 +435,16 @@ export type Database = {
           category?: string | null
           city?: string | null
           dedupe_hash?: string
+          district_id?: string | null
+          district_name?: string | null
           email?: string | null
           email_enriched?: string | null
           id?: string
           listing_url?: string | null
+          locality_id?: string | null
+          locality_name?: string | null
           name?: string | null
+          notes?: string | null
           owner_name?: string | null
           phone?: string | null
           pushed_to_crm_at?: string | null
@@ -353,6 +457,7 @@ export type Database = {
           scraped_at?: string
           source?: string
           source_url?: string | null
+          state_code?: string | null
           user_id?: string
           website?: string | null
           whatsapp?: string | null

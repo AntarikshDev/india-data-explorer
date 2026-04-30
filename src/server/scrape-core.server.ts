@@ -17,8 +17,15 @@ export async function performScrapeRun(opts: {
   supabase: AnySupabase;
   userId: string;
   runId: string;
+  geo?: {
+    state_code?: string | null;
+    district_id?: string | null;
+    district_name?: string | null;
+    locality_id?: string | null;
+    locality_name?: string | null;
+  };
 }): Promise<{ ok: boolean; total: number; errors: string[] }> {
-  const { supabase, userId, runId } = opts;
+  const { supabase, userId, runId, geo } = opts;
 
   const { data: run, error: runErr } = await supabase
     .from("scrape_runs")
@@ -133,6 +140,11 @@ export async function performScrapeRun(opts: {
           dedupe_hash: hash,
           score,
           score_reasons: reasons as unknown as never,
+          state_code: geo?.state_code ?? null,
+          district_id: geo?.district_id ?? null,
+          district_name: geo?.district_name ?? null,
+          locality_id: geo?.locality_id ?? null,
+          locality_name: geo?.locality_name ?? null,
         },
       ]);
       if (!insErr) {

@@ -31,6 +31,12 @@ export interface Lead {
   score: number;
   score_reasons: Record<string, number> | null;
   scraped_at: string;
+  state_code: string | null;
+  district_id: string | null;
+  district_name: string | null;
+  locality_id: string | null;
+  locality_name: string | null;
+  notes: string | null;
 }
 
 export type SourceProgressStatus = "pending" | "running" | "done" | "failed";

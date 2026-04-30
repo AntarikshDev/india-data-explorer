@@ -169,6 +169,11 @@ async function runOneCampaignTarget(c: any): Promise<{ ok: boolean; error?: stri
     supabase: supabaseAdmin,
     userId,
     runId: run.id,
+    geo: {
+      state_code: stateCode,
+      district_id: next.id,
+      district_name: next.name,
+    },
   });
 
   // Count actual leads inserted for this target
