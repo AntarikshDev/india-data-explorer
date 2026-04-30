@@ -51,14 +51,25 @@ function ResultsPage() {
   useEffect(() => {
     load();
     const ch = supabase
-      .channel(`leads-${runId}`)
+      .channel(`run-${runId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `run_id=eq.${runId}` }, () => load())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "scrape_runs", filter: `id=eq.${runId}` }, (payload) => {
+        setRun(payload.new as ScrapeRun);
+      })
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId]);
+
+  // Tick every second so elapsed time updates while running
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (run?.status !== "running" && run?.status !== "queued") return;
+    const i = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(i);
+  }, [run?.status]);
 
   const filtered = leads.filter((l) => {
     if (!filter.trim()) return true;
