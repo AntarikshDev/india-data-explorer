@@ -14,13 +14,17 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter,
+} from "@/components/ui/drawer";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { listLeads, updateLead, importLeadsCsv } from "@/server/leads.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { SOURCE_LABELS, type Lead } from "@/lib/leadTypes";
 import { toast } from "sonner";
-import { Pencil, Upload, Download, Search } from "lucide-react";
+import { Pencil, Upload, Download, Search, ChevronRight, SlidersHorizontal } from "lucide-react";
 
 export const Route = createFileRoute("/data")({
   component: () => (
