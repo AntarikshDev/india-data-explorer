@@ -29,7 +29,13 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { name: "theme-color", content: "#0b1020" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "EdSetu" },
+      { name: "format-detection", content: "telephone=yes" },
       { title: "EdSetu Lead Scraper" },
       { name: "description", content: "Scrape Google Maps, JustDial, and IndiaMART for sales leads. Export to Excel or push to CRM." },
       { name: "author", content: "EdSetu" },
@@ -44,10 +50,9 @@ export const Route = createRootRoute({
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fdde56eb-f50f-44f3-98fd-57d7fc7f12e9/id-preview-bdd82b53--9c789170-636a-4368-b1ab-15e511bfead6.lovable.app-1777541395077.png" },
     ],
     links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
+      { rel: "stylesheet", href: appCss },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
     ],
   }),
   shellComponent: RootShell,
