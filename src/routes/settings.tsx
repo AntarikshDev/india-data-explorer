@@ -72,10 +72,10 @@ function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-bold">Settings</h1>
+    <div className="max-w-2xl space-y-5 md:space-y-6">
+      <h1 className="text-xl md:text-2xl font-bold">Settings</h1>
 
-      <Card className="p-6 space-y-5">
+      <Card className="p-4 md:p-6 space-y-5">
         <div>
           <h2 className="font-semibold">EdSetu Command — Daily Sync (8 PM IST)</h2>
           <p className="text-sm text-muted-foreground mt-1">
