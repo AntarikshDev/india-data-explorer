@@ -1,82 +1,144 @@
-# EdSetu Lead Scraper
 
-A web app where you type a query like *"Coaching classes in sector 135 Noida"*, pick a source (Google Maps / JustDial / IndiaMART / All), and get a clean table of leads. Export to Excel, save history, or push selected rows into your EdSetu Command CRM.
+# Final Development Plan — EdSetu Lead Engine
 
-## How it works (plain language)
+Combines the **v2 sales-pipeline plan** (scraper hardening → call queue → CRM sync) with the **geo-aware auto-run agent** (Noida → UP → next state) into one phased build.
 
-1. You enter a query and pick sources.
-2. The app sends the job to a backend that uses **Firecrawl** (a managed scraping API that handles proxies, JavaScript rendering, and anti-bot challenges). Your browser never touches the target sites — so no CORS, no blocking, no Windows needed.
-3. Firecrawl returns the page contents; the backend parses them into a clean schema (name, phone, address, rating, category, website, source URL).
-4. Results stream into a live table. You can edit, deduplicate, export, or push to CRM.
+End state: every morning the system has a fresh, scored, deduped queue of UP coaching-class leads ready to dial, the CRM is in sync, and when UP saturates, you click one button to expand to the next state.
 
-## Honest expectations on each source
+---
 
-- **JustDial & IndiaMART** — high reliability via Firecrawl. These are the strongest fits.
-- **Google Maps** — works, but Google fights bots harder. Expect occasional partial results. If volume grows, we add Google Places API as a fallback (separate decision later).
-- Phone numbers on JustDial/IndiaMART are sometimes click-to-reveal — Firecrawl's "wait for" + interaction options handle most cases; a small percentage may come back masked.
+## Phase 1 — Scraper hardening (foundation)
 
-## Pages
+Make the data we already pull trustworthy before we build anything on top of it.
 
-- **/ (Search)** — query box, source checkboxes, results-per-source slider (10/25/50), city autocomplete suggestions, "Run" button, live progress panel.
-- **/results/:runId** — the big editable table. Columns: select, name, phone, email, address, city, category, rating, reviews, website, source, source URL, scraped at. Sort, filter, dedupe by phone, bulk delete, bulk export, bulk push-to-CRM.
-- **/history** — every past run with query, sources, count, date, and quick actions (re-run, view, export, delete).
-- **/settings** — Firecrawl connection status, EdSetu Command CRM connection (API URL + key), default export columns, dedupe rules.
+- **Phone reveal action** — Firecrawl `actions: [{type:'click', selector:'Show Number'}]` on JustDial; raises phone coverage from ~60% → ~95%.
+- **Pagination** — multi-page fetch (page 1–N) per source, capped by `results_per_source`.
+- **Schema split** — distinguish `business_website` from `listing_url` (JustDial profile).
+- **City strict-mode** — prompt enforces locality match; rejects out-of-area results.
+- **Per-run cost preview** — show estimated Firecrawl credits before the user confirms.
+- **Better error surfacing** — partial success per source, not all-or-nothing.
 
-## Data model (Lovable Cloud / Supabase)
+Ship: existing `/` search page + `/results/$runId` work better. No new pages.
 
-- `scrape_runs` — id, query, sources[], status (queued/running/done/failed), counts, created_at, error.
-- `leads` — id, run_id, name, phone, email, address, city, category, rating, reviews_count, website, source (gmaps/justdial/indiamart), source_url, raw_json, scraped_at, pushed_to_crm_at, dedupe_hash.
-- Unique index on `dedupe_hash` per user so re-runs don't duplicate.
+---
 
-## Backend jobs
+## Phase 2 — Geo dataset (Pan-India locations)
 
-- `POST /api/scrape` server function — creates a run, kicks off async work.
-- A worker server function per source builds the right Firecrawl call:
-  - **JustDial:** `https://www.justdial.com/<city>/<query>` → Firecrawl scrape with `formats: ['markdown', { type: 'json', schema: leadSchema }]` and `onlyMainContent: true`.
-  - **IndiaMART:** search URL → same JSON-extraction pattern.
-  - **Google Maps:** `https://www.google.com/maps/search/<query>` → Firecrawl with `waitFor` + JSON extraction.
-- Results parsed with Zod, deduped, inserted in batches, run status updated.
-- Live updates to the UI via Supabase Realtime on the `leads` table.
+Ship the location backbone the agent needs.
 
-## Excel export
+- New tables: `geo_states` (36), `geo_districts` (~780, with `hq_lat`/`hq_lng`), `geo_localities` (sectors/areas, seeded with Noida + top UP cities ~50 entries; grows over time).
+- Migration loads from a bundled `src/data/india-geo.json` (~80 KB).
+- **Not** copying LNJ SDMS villages — wrong grain for B2B scraping (businesses don't list at panchayat level) and would bloat DB by 600k rows for no benefit. Keep district + locality.
+- Cascading dropdowns component (state → district → locality) reusable across forms.
 
-- "Export to Excel" button on results page → server function builds an `.xlsx` with `exceljs` (formatted headers, frozen top row, autofilters, phone as text to preserve leading zeros) and streams it to download. Also supports CSV.
+Ship: dropdowns work; no user-visible feature yet.
 
-## Push to EdSetu Command CRM
+---
 
-Two options — we'll confirm whichever you want during build:
-- **A. Direct DB write** — if EdSetu Command is on the same Supabase, add a server function that inserts into its `contacts`/`leads` table using a service-role key stored as a secret. Fastest, cleanest.
-- **B. HTTP API** — EdSetu Command exposes `/api/public/leads/import` with HMAC signature; this app POSTs selected leads to it. Decoupled, safer.
+## Phase 3 — Enrichment & lead scoring
 
-Default assumption: **B (HTTP)**. Switchable to A on request.
+Turn raw rows into "warm enough to call".
 
-## Cost & limits (start-small posture)
+- **Enrichment**: when website exists, scrape it for email + WhatsApp + owner name (one extra Firecrawl call per lead, gated by setting).
+- **Scoring** — 0–100 based on: has phone (+30), has email (+15), rating ≥ 4 (+15), reviews ≥ 20 (+10), recent activity (+10), website live (+10), category match (+10).
+- New columns on `leads`: `email_enriched`, `whatsapp`, `owner_name`, `score`, `score_reasons jsonb`.
+- Sort/filter by score on results page; default sort = score DESC.
 
-- Firecrawl free tier (~500 credits/mo) covers initial testing. ~1 credit per page scraped.
-- App enforces a per-day cap (configurable in /settings) so a runaway query can't drain credits.
-- Every run shows estimated credit cost before you confirm.
+Ship: results table now ranks high-value leads first.
 
-## Tech notes
+---
 
-```text
-Frontend:  TanStack Start + Tailwind + shadcn/ui
-Backend:   createServerFn handlers + Lovable Cloud (Supabase)
-Scraping:  Firecrawl connector (server-side only, key never reaches browser)
-Excel:     exceljs in a server function, streamed download
-Realtime:  Supabase Realtime on `leads` table for live row updates
-Auth:      Supabase email/password, single user, RLS scoped to user_id
-```
+## Phase 4 — Call Queue (the dialer screen)
 
-## What you'll be asked to do during build
+The screen you actually live in.
 
-1. Approve enabling **Lovable Cloud** (database + auth).
-2. Approve linking the **Firecrawl connector** (one click; no key to paste).
-3. Confirm CRM push method (HTTP vs direct DB) and provide the EdSetu Command endpoint/key at that step.
+- New route `/queue` — one lead at a time, full-screen card: name, phone (click-to-call `tel:`), WhatsApp button, score, address, map preview, category, rating, source link.
+- Keyboard shortcuts: `c` connected, `v` voicemail, `r` not interested, `f` follow-up + date, `s` skip, `n` next.
+- Notes textarea autosaves per lead.
+- Outcomes write to new `call_attempts` table (lead_id, outcome, notes, next_action_at, created_at).
+- Queue is built from highest-score un-contacted leads in your active campaign; respects per-day call cap.
 
-## Out of scope for v1 (can add later)
+Ship: open `/queue`, dial, log outcome, next. The product is now *useful for sales* end-to-end.
 
-- Google Places API fallback for Google Maps reliability
-- Email enrichment (Hunter.io / Apollo)
-- Scheduled recurring scrapes
-- Team / multi-user with roles
-- WhatsApp / email outreach from inside the app
+---
+
+## Phase 5 — Campaigns & the geo planner
+
+Saved searches with auto-routing.
+
+- New tables: `campaigns`, `campaign_targets`, `campaign_state_progress` (full schema in earlier plan).
+- New routes:
+  - `/campaigns` — list with coverage bars per state.
+  - `/campaigns/new` — wizard: name, query template, sources, **start anchor** (Noida → Gautam Buddha Nagar → UP), thresholds (coverage %, per-district cap, exhaustion streak), schedule.
+  - `/campaigns/$id` — planned route table (past + upcoming targets), drag-reorder, skip, "Run agent now" button.
+- `nextTarget()` planner (server fn): locality → next nearest locality → next nearest district by Haversine from current district HQ → state coverage check.
+- "Done" district = N consecutive runs <5 new leads OR cap hit.
+
+Ship: click "Run now" and the agent walks Noida → Greater Noida → Ghaziabad → Hapur → Meerut → … logging each run.
+
+---
+
+## Phase 6 — Daily cron + state-expansion approval
+
+Hands-free mode.
+
+- `pg_cron` job → `POST /api/public/hooks/run-daily-agent` at 06:00 IST, secured with `AGENT_CRON_SECRET`.
+- Per-campaign daily cap (e.g., 5 targets/day) honouring global Firecrawl credit cap.
+- When state coverage ≥ threshold (default 80%): campaign goes to `awaiting_next_state`, suggestions = top 3 nearest unscraped states by border distance (Bihar / Delhi / Uttarakhand for UP).
+- Dashboard banner: *"UP is 82% covered (62/75 districts). Continue with: **Bihar** · **Delhi NCR** · **Uttarakhand**"* → one click resumes.
+- New `notifications` table for the approval prompt + future alerts.
+
+Ship: set it once, leads arrive every morning.
+
+---
+
+## Phase 7 — CRM sync (push + pull-back)
+
+Close the loop with EdSetu Command.
+
+- **Push**: existing one-shot push extended to auto-push high-score leads (≥ threshold) on insert.
+- **Pull-back**: nightly job pulls status updates from EdSetu Command (`contacted`, `meeting_set`, `won`, `lost`) and writes to `lead_crm_status` so the queue can hide already-handled leads.
+- Conflict rule: CRM is source of truth for outcomes; scraper is source of truth for contact data.
+
+Ship: leads you push become trackable; queue auto-hides what sales has already worked.
+
+---
+
+## Phase 8 — Insights dashboard
+
+Optimise what to scrape next.
+
+- New route `/insights`: leads/day, conversion by source, conversion by district, avg score per category, credit spend vs leads-touched.
+- "Best ROI districts" widget → suggests where to deepen vs move on.
+
+Ship: data-driven decisions on where the agent should focus.
+
+---
+
+## Cross-cutting
+
+- **Auth**: single user, Supabase email/password (already done).
+- **RLS**: every new table scoped by `user_id`.
+- **Realtime**: subscriptions on `leads`, `campaign_targets`, `notifications`.
+- **Secrets to add**: `AGENT_CRON_SECRET` (Phase 6), `EDSETU_CRM_TOKEN` (Phase 7, if not already in `crm_settings`).
+
+## What we're NOT building (stay focused)
+
+- Village/panchayat-grain scraping (wrong grain for B2B; LNJ uses it for ground mobilisers, different problem).
+- WhatsApp/email outreach from inside the app (use existing tools; we just expose the buttons).
+- Multi-user / team roles (single-user for now).
+- Map UI for route plan (table is enough for v1).
+- Google Places API fallback (only if Firecrawl on Maps proves too flaky in Phase 1 testing).
+
+## Suggested ship cadence
+
+| Pass | Phases | Outcome |
+|------|--------|---------|
+| 1 | 1 + 2 + 3 | Better data, ranked, with location backbone ready. |
+| 2 | 4 + 5 | Dialer screen + manual-trigger geo agent. **Product is sales-usable.** |
+| 3 | 6 + 7 | Hands-free daily runs + CRM round-trip. |
+| 4 | 8 | Insights polish. |
+
+---
+
+Approve and I'll start **Pass 1 (Phases 1–3)**: scraper hardening, geo dataset migration, and lead scoring.
