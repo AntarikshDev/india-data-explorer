@@ -1,17 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { scrapeSource, dedupeHash, scoreLead } from "./firecrawl.server";
+import { StartSchema } from "./scrape.schemas";
 import type { Source } from "@/lib/leadTypes";
 
-const SourceEnum = z.enum(["gmaps", "justdial", "indiamart"]);
-
-const StartSchema = z.object({
-  query: z.string().min(2).max(200),
-  city: z.string().max(100).optional().nullable(),
-  sources: z.array(SourceEnum).min(1).max(3),
-  resultsPerSource: z.number().int().min(5).max(50).default(25),
-});
 
 export const startScrapeRun = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
