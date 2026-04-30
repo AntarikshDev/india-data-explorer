@@ -382,20 +382,35 @@ function QueuePage() {
 
       {/* Filters / Set selector */}
       <Card className="p-2">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1.5 px-1">
-          <Filter className="h-3 w-3" /> Filter
+        <div className="flex items-center justify-between gap-1 text-xs text-muted-foreground mb-1.5 px-1">
+          <span className="flex items-center gap-1"><Filter className="h-3 w-3" /> Filter</span>
+          {(setId || stateCode || districtId || localityId) && (
+            <button
+              className="text-[10px] underline"
+              onClick={() => {
+                setSetId("");
+                setStateCode("");
+                setDistrictId("");
+                setLocalityId("");
+                setTimeout(() => refresh(), 0);
+              }}
+            >
+              Clear
+            </button>
+          )}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
           <Select
             value={setId || "__none__"}
             onValueChange={(v) => {
-              setSetId(v === "__none__" ? "" : v);
-              if (v !== "__none__") {
-                // a set defines its own filters; clear manual
+              const next = v === "__none__" ? "" : v;
+              setSetId(next);
+              if (next) {
                 setStateCode("");
                 setDistrictId("");
                 setLocalityId("");
               }
+              setTimeout(() => refresh(), 0);
             }}
           >
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Saved set" /></SelectTrigger>
@@ -415,6 +430,7 @@ function QueuePage() {
               setDistrictId("");
               setLocalityId("");
               setSetId("");
+              setTimeout(() => refresh(), 0);
             }}
           >
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="State" /></SelectTrigger>
@@ -429,6 +445,7 @@ function QueuePage() {
               setDistrictId(v === "__any__" ? "" : v);
               setLocalityId("");
               setSetId("");
+              setTimeout(() => refresh(), 0);
             }}
             disabled={!stateCode}
           >
@@ -443,6 +460,7 @@ function QueuePage() {
             onValueChange={(v) => {
               setLocalityId(v === "__any__" ? "" : v);
               setSetId("");
+              setTimeout(() => refresh(), 0);
             }}
             disabled={!districtId}
           >
@@ -453,11 +471,27 @@ function QueuePage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex justify-end mt-1.5">
-          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={refresh}>
-            Apply
-          </Button>
-        </div>
+        {(() => {
+          const activeSet = sets.find((s) => s.id === setId);
+          const activeState = states.find((s) => s.code === stateCode);
+          const activeDistrict = districts.find((d) => d.id === districtId);
+          const activeLocality = localities.find((l) => l.id === localityId);
+          const chips: string[] = [];
+          if (activeSet) chips.push(`Set: ${activeSet.name}`);
+          if (activeState) chips.push(activeState.name);
+          if (activeDistrict) chips.push(activeDistrict.name);
+          if (activeLocality) chips.push(activeLocality.name);
+          if (chips.length === 0) return null;
+          return (
+            <div className="mt-2 flex flex-wrap gap-1 px-1">
+              {chips.map((c) => (
+                <Badge key={c} variant="secondary" className="text-[10px] font-normal">
+                  {c}
+                </Badge>
+              ))}
+            </div>
+          );
+        })()}
       </Card>
 
       {loading ? (
