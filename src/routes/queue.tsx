@@ -31,6 +31,15 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+} from "@/components/ui/drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { SOURCE_LABELS, type Lead } from "@/lib/leadTypes";
 import { toast } from "sonner";
