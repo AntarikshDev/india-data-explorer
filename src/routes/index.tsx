@@ -28,7 +28,7 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-const ALL_SOURCES: Source[] = ["gmaps", "justdial", "indiamart"];
+const ALL_SOURCES: Source[] = ["gmaps", "justdial"];
 
 function SearchPage() {
   const navigate = useNavigate();
@@ -36,7 +36,7 @@ function SearchPage() {
   const executeRunFn = useServerFn(executeScrapeRun);
   const [query, setQuery] = useState("");
   const [geo, setGeo] = useState<GeoSelection>(emptyGeoSelection);
-  const [sources, setSources] = useState<Source[]>(["justdial", "indiamart"]);
+  const [sources, setSources] = useState<Source[]>(["gmaps", "justdial"]);
   const [perSource, setPerSource] = useState(25);
   const [running, setRunning] = useState(false);
 
@@ -119,7 +119,7 @@ function SearchPage() {
 
         <div className="space-y-3">
           <Label>Sources</Label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {ALL_SOURCES.map((s) => (
               <label
                 key={s}
