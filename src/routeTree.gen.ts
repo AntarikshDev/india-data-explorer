@@ -21,6 +21,7 @@ import { Route as ResultsRunIdRouteImport } from './routes/results.$runId'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
 import { Route as ApiPublicHooksSyncCrmDailyRouteImport } from './routes/api/public/hooks/sync-crm-daily'
+import { Route as ApiPublicHooksRunScrapeRouteImport } from './routes/api/public/hooks/run-scrape'
 import { Route as ApiPublicHooksRunDailyAgentRouteImport } from './routes/api/public/hooks/run-daily-agent'
 
 const SettingsRoute = SettingsRouteImport.update({
@@ -84,6 +85,11 @@ const ApiPublicHooksSyncCrmDailyRoute =
     path: '/api/public/hooks/sync-crm-daily',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksRunScrapeRoute = ApiPublicHooksRunScrapeRouteImport.update({
+  id: '/api/public/hooks/run-scrape',
+  path: '/api/public/hooks/run-scrape',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksRunDailyAgentRoute =
   ApiPublicHooksRunDailyAgentRouteImport.update({
     id: '/api/public/hooks/run-daily-agent',
@@ -104,6 +110,7 @@ export interface FileRoutesByFullPath {
   '/results/$runId': typeof ResultsRunIdRoute
   '/campaigns/': typeof CampaignsIndexRoute
   '/api/public/hooks/run-daily-agent': typeof ApiPublicHooksRunDailyAgentRoute
+  '/api/public/hooks/run-scrape': typeof ApiPublicHooksRunScrapeRoute
   '/api/public/hooks/sync-crm-daily': typeof ApiPublicHooksSyncCrmDailyRoute
 }
 export interface FileRoutesByTo {
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/results/$runId': typeof ResultsRunIdRoute
   '/campaigns': typeof CampaignsIndexRoute
   '/api/public/hooks/run-daily-agent': typeof ApiPublicHooksRunDailyAgentRoute
+  '/api/public/hooks/run-scrape': typeof ApiPublicHooksRunScrapeRoute
   '/api/public/hooks/sync-crm-daily': typeof ApiPublicHooksSyncCrmDailyRoute
 }
 export interface FileRoutesById {
@@ -135,6 +143,7 @@ export interface FileRoutesById {
   '/results/$runId': typeof ResultsRunIdRoute
   '/campaigns/': typeof CampaignsIndexRoute
   '/api/public/hooks/run-daily-agent': typeof ApiPublicHooksRunDailyAgentRoute
+  '/api/public/hooks/run-scrape': typeof ApiPublicHooksRunScrapeRoute
   '/api/public/hooks/sync-crm-daily': typeof ApiPublicHooksSyncCrmDailyRoute
 }
 export interface FileRouteTypes {
@@ -152,6 +161,7 @@ export interface FileRouteTypes {
     | '/results/$runId'
     | '/campaigns/'
     | '/api/public/hooks/run-daily-agent'
+    | '/api/public/hooks/run-scrape'
     | '/api/public/hooks/sync-crm-daily'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/results/$runId'
     | '/campaigns'
     | '/api/public/hooks/run-daily-agent'
+    | '/api/public/hooks/run-scrape'
     | '/api/public/hooks/sync-crm-daily'
   id:
     | '__root__'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/results/$runId'
     | '/campaigns/'
     | '/api/public/hooks/run-daily-agent'
+    | '/api/public/hooks/run-scrape'
     | '/api/public/hooks/sync-crm-daily'
   fileRoutesById: FileRoutesById
 }
@@ -198,6 +210,7 @@ export interface RootRouteChildren {
   ResultsRunIdRoute: typeof ResultsRunIdRoute
   CampaignsIndexRoute: typeof CampaignsIndexRoute
   ApiPublicHooksRunDailyAgentRoute: typeof ApiPublicHooksRunDailyAgentRoute
+  ApiPublicHooksRunScrapeRoute: typeof ApiPublicHooksRunScrapeRoute
   ApiPublicHooksSyncCrmDailyRoute: typeof ApiPublicHooksSyncCrmDailyRoute
 }
 
@@ -287,6 +300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncCrmDailyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/run-scrape': {
+      id: '/api/public/hooks/run-scrape'
+      path: '/api/public/hooks/run-scrape'
+      fullPath: '/api/public/hooks/run-scrape'
+      preLoaderRoute: typeof ApiPublicHooksRunScrapeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/run-daily-agent': {
       id: '/api/public/hooks/run-daily-agent'
       path: '/api/public/hooks/run-daily-agent'
@@ -310,6 +330,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResultsRunIdRoute: ResultsRunIdRoute,
   CampaignsIndexRoute: CampaignsIndexRoute,
   ApiPublicHooksRunDailyAgentRoute: ApiPublicHooksRunDailyAgentRoute,
+  ApiPublicHooksRunScrapeRoute: ApiPublicHooksRunScrapeRoute,
   ApiPublicHooksSyncCrmDailyRoute: ApiPublicHooksSyncCrmDailyRoute,
 }
 export const routeTree = rootRouteImport
