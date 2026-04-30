@@ -83,12 +83,20 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
     const tasks = sources.map(async (source) => {
       await setSourceProgress(source, { status: "running", started_at: new Date().toISOString() });
 
-      const { leads, sourceUrl, error: scrapeErr } = await scrapeSource({
-        source,
-        query: runRow.query,
-        city: runRow.city ?? null,
-        limit: runRow.results_per_source,
-      });
+      const useCustom = isCustomScraperEnabled();
+      const { leads, sourceUrl, error: scrapeErr } = useCustom
+        ? await scrapeViaService({
+            source,
+            query: runRow.query,
+            city: runRow.city ?? null,
+            limit: runRow.results_per_source,
+          })
+        : await scrapeSource({
+            source,
+            query: runRow.query,
+            city: runRow.city ?? null,
+            limit: runRow.results_per_source,
+          });
 
       if (scrapeErr && leads.length === 0) {
         await setSourceProgress(source, {
