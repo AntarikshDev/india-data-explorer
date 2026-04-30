@@ -624,10 +624,15 @@ function QueuePage() {
 
       {/* Notes modal */}
       <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-sm p-4 sm:p-6 rounded-lg">
           <DialogHeader>
-            <DialogTitle>
-              Log this call {callStart && <span className="text-xs font-mono text-red-600 ml-2">{elapsedStr}</span>}
+            <DialogTitle className="flex items-center gap-2 pr-6">
+              <span>Log this call</span>
+              {callStart && (
+                <span className={`text-xs font-mono ${callEnd ? "text-muted-foreground" : "text-red-600"}`}>
+                  {callEnd ? "" : "● "}{elapsedStr}
+                </span>
+              )}
             </DialogTitle>
             <DialogDescription className="truncate">
               {current?.name ?? "Lead"} · {current?.phone ? `••• ${current.phone.slice(-4)}` : ""}
@@ -635,6 +640,15 @@ function QueuePage() {
           </DialogHeader>
 
           <div className="space-y-3">
+            {callStart && !callEnd && (
+              <button
+                type="button"
+                onClick={() => setCallEnd(Date.now())}
+                className="w-full text-xs text-muted-foreground hover:text-foreground border border-dashed rounded-md py-1.5"
+              >
+                Stop timer (call already ended)
+              </button>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="notes" className="text-xs">Notes</Label>
               <Textarea
@@ -655,9 +669,10 @@ function QueuePage() {
                 type="datetime-local"
                 value={followUpDate}
                 onChange={(e) => setFollowUpDate(e.target.value)}
+                className="w-full"
               />
             </div>
-            <div className="grid grid-cols-3 gap-1.5 pt-1">
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
               {OUTCOMES.map((o) => {
                 const Icon = o.icon;
                 return (
@@ -665,9 +680,9 @@ function QueuePage() {
                     key={o.key}
                     onClick={() => submitOutcome(o.key)}
                     disabled={logging}
-                    className={`flex items-center justify-center gap-1 rounded-md border h-9 text-xs font-medium transition disabled:opacity-50 ${toneClass[o.tone]}`}
+                    className={`flex items-center justify-center gap-1 rounded-md border h-10 text-xs font-medium transition disabled:opacity-50 ${toneClass[o.tone]}`}
                   >
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{o.label}</span>
                   </button>
                 );
@@ -675,7 +690,7 @@ function QueuePage() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-2">
+          <DialogFooter className="flex-row justify-between items-center gap-2 sm:gap-2">
             <Button
               variant="ghost"
               size="sm"
