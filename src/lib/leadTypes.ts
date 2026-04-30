@@ -33,6 +33,18 @@ export interface Lead {
   scraped_at: string;
 }
 
+export type SourceProgressStatus = "pending" | "running" | "done" | "failed";
+
+export interface SourceProgress {
+  status: SourceProgressStatus;
+  inserted: number;
+  error?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+}
+
+export type RunProgress = Partial<Record<Source, SourceProgress>>;
+
 export interface ScrapeRun {
   id: string;
   user_id: string;
@@ -43,6 +55,9 @@ export interface ScrapeRun {
   status: "queued" | "running" | "done" | "failed";
   total_count: number;
   error: string | null;
+  progress: RunProgress;
+  started_at: string | null;
+  finished_at: string | null;
   created_at: string;
   updated_at: string;
 }
