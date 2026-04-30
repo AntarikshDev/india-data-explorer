@@ -123,7 +123,8 @@ export const updateCampaignStatus = createServerFn({ method: "POST" })
 // or in exhaustion streak.
 // =============================================================
 async function pickNextDistrict(opts: {
-  supabase: ReturnType<typeof requireSupabaseAuth.middleware> extends never ? never : any; // typed loosely
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any;
   userId: string;
   campaignId: string;
   stateCode: string;
