@@ -56,8 +56,9 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
     if (runErr || !run) {
       return { ok: false, error: runErr?.message ?? "Run not found" };
     }
+    const runRow = run;
 
-    const sources = run.sources as Source[];
+    const sources = runRow.sources as Source[];
     const progress: RunProgress = (run.progress as RunProgress) ?? {};
 
     // Mark run as running
