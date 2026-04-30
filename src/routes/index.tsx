@@ -36,7 +36,7 @@ function SearchPage() {
   const executeRunFn = useServerFn(executeScrapeRun);
   const [query, setQuery] = useState("");
   const [geo, setGeo] = useState<GeoSelection>(emptyGeoSelection);
-  const [sources, setSources] = useState<Source[]>(["justdial", "indiamart"]);
+  const [sources, setSources] = useState<Source[]>(["gmaps", "justdial"]);
   const [perSource, setPerSource] = useState(25);
   const [running, setRunning] = useState(false);
 
