@@ -205,6 +205,8 @@ function QueuePage() {
     setNotes("");
     setFollowUpDate("");
     setCallStart(null);
+    setCallEnd(null);
+    wentHiddenRef.current = false;
   }
 
   useEffect(() => {
