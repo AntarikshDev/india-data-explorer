@@ -68,10 +68,18 @@ function SearchPage() {
         toast.error(res.error ?? "Could not start scrape");
         return;
       }
-      // Fire-and-forget the actual scrape — the results page subscribes via realtime.
-      executeRunFn({ data: { runId: res.runId } }).catch((err) => {
-        console.error("executeScrapeRun failed:", err);
-      });
+      // Trigger the scrape via a public webhook with `keepalive: true` so the
+      // request survives navigation. Fire-and-forget — results stream in via realtime.
+      const { data: sess } = await supabase.auth.getUser();
+      const userId = sess.user?.id;
+      if (userId) {
+        fetch("/api/public/hooks/run-scrape", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ runId: res.runId, userId }),
+          keepalive: true,
+        }).catch((err) => console.error("run-scrape webhook failed:", err));
+      }
       toast.success("Scrape started — streaming results live");
       navigate({ to: "/results/$runId", params: { runId: res.runId } });
     } catch (e) {
