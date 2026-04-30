@@ -17,24 +17,25 @@ export const startScrapeRun = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => StartSchema.parse(input))
   .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+    try {
+      const { supabase, userId } = context;
 
-    const { data: run, error } = await supabase
-      .from("scrape_runs")
-      .insert({
-        user_id: userId,
-        query: data.query,
-        city: data.city ?? null,
-        sources: data.sources,
-        results_per_source: data.resultsPerSource,
-        status: "running",
-      })
-      .select("*")
-      .single();
+      const { data: run, error } = await supabase
+        .from("scrape_runs")
+        .insert({
+          user_id: userId,
+          query: data.query,
+          city: data.city ?? null,
+          sources: data.sources,
+          results_per_source: data.resultsPerSource,
+          status: "running",
+        })
+        .select("*")
+        .single();
 
-    if (error || !run) {
-      throw new Error(error?.message ?? "Failed to create run");
-    }
+      if (error || !run) {
+        return { runId: null, total: 0, errors: [error?.message ?? "Failed to create run"] };
+      }
 
     // Derive a query category hint for scoring (first noun-ish token)
     const queryCategory = data.query.split(/\s+in\s+|\s+at\s+|,/i)[0]?.trim();
