@@ -480,33 +480,38 @@ function QueuePage() {
               >
                 {autoMode ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
               </Button>
-              {current.phone && (
+              {current.phone ? (
                 <Button
                   onClick={manualDial}
                   size="icon"
                   variant="outline"
                   className="h-10 w-10 rounded-full"
                   aria-label="Call"
+                  title={`Call +91 ${current.phone}`}
                 >
+                  <Phone className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button size="icon" variant="outline" disabled className="h-10 w-10 rounded-full" title="No phone">
                   <Phone className="h-4 w-4" />
                 </Button>
               )}
               {current.phone && (
-                <Button asChild size="icon" variant="outline" className="h-10 w-10 rounded-full" aria-label="WhatsApp">
+                <Button asChild size="icon" variant="outline" className="h-10 w-10 rounded-full" aria-label="WhatsApp" title="Open WhatsApp">
                   <a href={`https://wa.me/91${current.phone}`} target="_blank" rel="noreferrer">
                     <MessageCircle className="h-4 w-4" />
                   </a>
                 </Button>
               )}
               {current.website && (
-                <Button asChild size="icon" variant="outline" className="h-10 w-10 rounded-full" aria-label="Website">
+                <Button asChild size="icon" variant="outline" className="h-10 w-10 rounded-full" aria-label="Website" title={current.website}>
                   <a href={current.website} target="_blank" rel="noreferrer">
                     <Globe className="h-4 w-4" />
                   </a>
                 </Button>
               )}
               <span className="ml-auto font-mono text-xs text-muted-foreground">
-                {current.phone ? `••• ••• ${current.phone.slice(-4)}` : ""}
+                {current.phone ? `••• ••• ${current.phone.slice(-4)}` : "no phone"}
               </span>
             </div>
 
