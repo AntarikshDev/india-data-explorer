@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { startScrapeRun } from "@/server/scrape.functions";
+import { createScrapeRun, executeScrapeRun } from "@/server/scrape.functions";
 import { AppShell } from "@/components/AppShell";
 import { GeoPicker, emptyGeoSelection, type GeoSelection } from "@/components/GeoPicker";
 import { Button } from "@/components/ui/button";
