@@ -424,20 +424,42 @@ function EditDialog({
     toast.success("Saved");
     onSaved();
   }
+  const isMobile = useIsMobile();
+  const formBody = (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {(Object.keys(form) as (keyof typeof form)[]).map((k) => (
+        <div key={k} className={k === "address" || k === "notes" ? "sm:col-span-2" : ""}>
+          <Label className="text-xs capitalize">{k.replace("_", " ")}</Label>
+          <Input className="h-10" value={form[k]} onChange={(e) => set(k, e.target.value)} />
+        </div>
+      ))}
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open onOpenChange={(o) => !o && onClose()}>
+        <DrawerContent className="max-h-[92vh]">
+          <DrawerHeader>
+            <DrawerTitle>Edit lead</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-2 overflow-y-auto">{formBody}</div>
+          <DrawerFooter className="flex-row justify-end gap-2">
+            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit lead</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto">
-          {(Object.keys(form) as (keyof typeof form)[]).map((k) => (
-            <div key={k} className={k === "address" || k === "notes" ? "col-span-2" : ""}>
-              <Label className="text-xs capitalize">{k.replace("_", " ")}</Label>
-              <Input className="h-8 text-xs" value={form[k]} onChange={(e) => set(k, e.target.value)} />
-            </div>
-          ))}
-        </div>
+        <div className="max-h-[60vh] overflow-y-auto">{formBody}</div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
