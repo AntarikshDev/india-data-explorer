@@ -1,12 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { attachSupabaseAuth } from "@/integrations/supabase/auth-client-middleware";
 import { scrapeSource, dedupeHash, scoreLead } from "./firecrawl.server";
 import { StartSchema } from "./scrape.schemas";
 import type { Source } from "@/lib/leadTypes";
 
 
 export const startScrapeRun = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
   .inputValidator((input: unknown) => StartSchema.parse(input))
   .handler(async ({ data, context }) => {
     try {
