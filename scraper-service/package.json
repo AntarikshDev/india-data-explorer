@@ -6,8 +6,7 @@
   "description": "Self-hosted Playwright scraper for Google Maps, JustDial, IndiaMART. Deploy to Railway/Render.",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "postinstall": "playwright install chromium"
+    "dev": "node --watch src/server.js"
   },
   "engines": {
     "node": ">=20"
