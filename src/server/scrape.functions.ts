@@ -109,5 +109,10 @@ export const startScrapeRun = createServerFn({ method: "POST" })
       })
       .eq("id", run.id);
 
-    return { runId: run.id, total, errors };
+      return { runId: run.id, total, errors };
+    } catch (err) {
+      console.error("startScrapeRun failed:", err);
+      const message = err instanceof Error ? err.message : "Unknown server error";
+      return { runId: null, total: 0, errors: [message] };
+    }
   });
