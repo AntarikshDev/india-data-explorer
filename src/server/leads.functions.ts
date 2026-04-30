@@ -115,7 +115,7 @@ export const updateLead = createServerFn({ method: "POST" })
 
     const { error: upErr } = await supabase
       .from("leads")
-      .update(sanitized)
+      .update(sanitized as never)
       .eq("id", data.id)
       .eq("user_id", userId);
     if (upErr) return { ok: false, error: upErr.message };
