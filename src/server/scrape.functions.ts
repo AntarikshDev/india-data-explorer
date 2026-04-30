@@ -93,10 +93,15 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
         ? await scrapeViaService(scrapeInput)
         : await scrapeSource(scrapeInput);
 
+      // Fall back to Firecrawl when the custom Playwright service either
+      // crashed (browser launch failure) or got blocked at the CDN edge
+      // (e.g. JustDial's Akamai "Access Denied" 403).
       const shouldFallback =
         leads.length === 0 &&
         scrapeErr &&
-        /browserType\.launch|chromium_headless_shell|playwright/i.test(scrapeErr) &&
+        /browserType\.launch|chromium_headless_shell|playwright|access denied|akamai|edgesuite|403/i.test(
+          scrapeErr,
+        ) &&
         Boolean(process.env.FIRECRAWL_API_KEY);
       if (shouldFallback) {
         const fallback = await scrapeSource(scrapeInput);
