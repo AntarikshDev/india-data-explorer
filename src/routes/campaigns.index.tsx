@@ -43,15 +43,15 @@ function CampaignsPage() {
   }, [listFn]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Campaigns</h1>
-          <p className="text-muted-foreground">Auto-route scrapes across districts and states.</p>
+    <div className="max-w-4xl mx-auto space-y-5 md:space-y-6">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-3xl font-bold tracking-tight">Campaigns</h1>
+          <p className="text-xs md:text-base text-muted-foreground">Auto-route scrapes across districts and states.</p>
         </div>
-        <Button asChild>
+        <Button asChild size="sm">
           <Link to="/campaigns/new">
-            <Plus className="mr-2 h-4 w-4" /> New campaign
+            <Plus className="mr-1 h-4 w-4" /> New
           </Link>
         </Button>
       </div>

@@ -1,0 +1,18 @@
+{
+  "name": "EdSetu Lead Scraper",
+  "short_name": "EdSetu",
+  "description": "Scrape, score and call leads from Google Maps and JustDial.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0b1020",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

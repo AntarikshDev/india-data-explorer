@@ -42,8 +42,8 @@ function HistoryPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <h1 className="text-2xl font-bold">Run history</h1>
+    <div className="space-y-4 md:space-y-6 max-w-4xl">
+      <h1 className="text-xl md:text-2xl font-bold">Run history</h1>
       <div className="space-y-3">
         {runs.length === 0 && <p className="text-muted-foreground">No runs yet. Try a search!</p>}
         {runs.map((r) => (

@@ -80,10 +80,10 @@ function SetsPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <h1 className="text-2xl font-bold">Lead Sets</h1>
+    <div className="max-w-3xl space-y-5 md:space-y-6">
+      <h1 className="text-xl md:text-2xl font-bold">Lead Sets</h1>
 
-      <Card className="p-5 space-y-4">
+      <Card className="p-4 md:p-5 space-y-4">
         <h2 className="font-semibold">Create a calling set</h2>
         <div className="space-y-2">
           <Label htmlFor="n">Name</Label>
@@ -102,7 +102,7 @@ function SetsPage() {
       <div className="space-y-2">
         {rows.length === 0 && <p className="text-muted-foreground text-sm">No sets yet.</p>}
         {rows.map((s) => (
-          <Card key={s.id} className="p-4 flex items-center justify-between gap-3">
+          <Card key={s.id} className="p-3 md:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="min-w-0">
               <div className="font-medium truncate">{s.name}</div>
               <div className="text-xs text-muted-foreground flex flex-wrap gap-x-2">
