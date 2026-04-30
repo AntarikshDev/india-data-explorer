@@ -136,10 +136,13 @@ function QueuePage() {
   const [notes, setNotes] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
 
-  // Call timer
+  // Call timer — runs only while the OS call screen is in foreground (tab hidden on iPhone).
+  // Freezes the moment the user returns to the tab (call ended / cancelled).
   const [callStart, setCallStart] = useState<number | null>(null);
+  const [callEnd, setCallEnd] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const dialedRef = useRef<string | null>(null);
+  const wentHiddenRef = useRef(false);
 
   // Today log + help
   const [showHelp, setShowHelp] = useState(false);
