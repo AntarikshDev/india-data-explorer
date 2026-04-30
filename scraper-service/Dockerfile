@@ -1,5 +1,6 @@
 # Official Playwright image — Chromium and all required system libs preinstalled.
-FROM mcr.microsoft.com/playwright:v1.49.1-jammy
+# Keep this tag in sync with the exact `playwright` package version.
+FROM mcr.microsoft.com/playwright:v1.59.1-jammy
 
 WORKDIR /app
 

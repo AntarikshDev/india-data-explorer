@@ -31,6 +31,9 @@ function getBrowser() {
     browserPromise = chromium.launch({
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    }).catch((error) => {
+      browserPromise = null;
+      throw error;
     });
   }
   return browserPromise;

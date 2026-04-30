@@ -37,8 +37,10 @@ curl -X POST http://localhost:8080/scrape \
 ## Deploy on Render
 
 1. New → Web Service → connect repo.
-2. Root Directory: `scraper-service`. Build: `npm install`. Start: `npm start`.
-3. Add env var `SCRAPER_SERVICE_TOKEN`.
+2. Root Directory: `scraper-service`.
+3. Prefer **Docker** runtime so the Playwright browser and Linux libraries stay in sync with `package.json`.
+   - If using Node runtime: Build `npm install`; Start `npm start`.
+4. Add env var `SCRAPER_SERVICE_TOKEN`.
 
 ## Wire up the Lovable app
 

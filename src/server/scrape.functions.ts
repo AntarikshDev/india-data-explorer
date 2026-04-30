@@ -83,20 +83,27 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
     const tasks = sources.map(async (source) => {
       await setSourceProgress(source, { status: "running", started_at: new Date().toISOString() });
 
-      const useCustom = isCustomScraperEnabled();
-      const { leads, sourceUrl, error: scrapeErr } = useCustom
-        ? await scrapeViaService({
-            source,
-            query: runRow.query,
-            city: runRow.city ?? null,
-            limit: runRow.results_per_source,
-          })
-        : await scrapeSource({
-            source,
-            query: runRow.query,
-            city: runRow.city ?? null,
-            limit: runRow.results_per_source,
-          });
+      const scrapeInput = {
+        source,
+        query: runRow.query,
+        city: runRow.city ?? null,
+        limit: runRow.results_per_source,
+      };
+      let { leads, sourceUrl, error: scrapeErr } = isCustomScraperEnabled()
+        ? await scrapeViaService(scrapeInput)
+        : await scrapeSource(scrapeInput);
+
+      const shouldFallback =
+        leads.length === 0 &&
+        scrapeErr &&
+        /browserType\.launch|chromium_headless_shell|playwright/i.test(scrapeErr) &&
+        Boolean(process.env.FIRECRAWL_API_KEY);
+      if (shouldFallback) {
+        const fallback = await scrapeSource(scrapeInput);
+        leads = fallback.leads;
+        sourceUrl = fallback.sourceUrl;
+        scrapeErr = fallback.error ?? (fallback.leads.length ? undefined : scrapeErr);
+      }
 
       if (scrapeErr && leads.length === 0) {
         await setSourceProgress(source, {
