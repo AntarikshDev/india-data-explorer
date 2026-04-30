@@ -10,19 +10,27 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SetsRouteImport } from './routes/sets'
 import { Route as QueueRouteImport } from './routes/queue'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as DataRouteImport } from './routes/data'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CampaignsIndexRouteImport } from './routes/campaigns.index'
 import { Route as ResultsRunIdRouteImport } from './routes/results.$runId'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
+import { Route as ApiPublicHooksSyncCrmDailyRouteImport } from './routes/api/public/hooks/sync-crm-daily'
 import { Route as ApiPublicHooksRunDailyAgentRouteImport } from './routes/api/public/hooks/run-daily-agent'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetsRoute = SetsRouteImport.update({
+  id: '/sets',
+  path: '/sets',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QueueRoute = QueueRouteImport.update({
@@ -33,6 +41,11 @@ const QueueRoute = QueueRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DataRoute = DataRouteImport.update({
+  id: '/data',
+  path: '/data',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -65,6 +78,12 @@ const CampaignsIdRoute = CampaignsIdRouteImport.update({
   path: '/campaigns/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksSyncCrmDailyRoute =
+  ApiPublicHooksSyncCrmDailyRouteImport.update({
+    id: '/api/public/hooks/sync-crm-daily',
+    path: '/api/public/hooks/sync-crm-daily',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksRunDailyAgentRoute =
   ApiPublicHooksRunDailyAgentRouteImport.update({
     id: '/api/public/hooks/run-daily-agent',
@@ -75,90 +94,111 @@ const ApiPublicHooksRunDailyAgentRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/data': typeof DataRoute
   '/history': typeof HistoryRoute
   '/queue': typeof QueueRoute
+  '/sets': typeof SetsRoute
   '/settings': typeof SettingsRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/results/$runId': typeof ResultsRunIdRoute
   '/campaigns/': typeof CampaignsIndexRoute
   '/api/public/hooks/run-daily-agent': typeof ApiPublicHooksRunDailyAgentRoute
+  '/api/public/hooks/sync-crm-daily': typeof ApiPublicHooksSyncCrmDailyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/data': typeof DataRoute
   '/history': typeof HistoryRoute
   '/queue': typeof QueueRoute
+  '/sets': typeof SetsRoute
   '/settings': typeof SettingsRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/results/$runId': typeof ResultsRunIdRoute
   '/campaigns': typeof CampaignsIndexRoute
   '/api/public/hooks/run-daily-agent': typeof ApiPublicHooksRunDailyAgentRoute
+  '/api/public/hooks/sync-crm-daily': typeof ApiPublicHooksSyncCrmDailyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/data': typeof DataRoute
   '/history': typeof HistoryRoute
   '/queue': typeof QueueRoute
+  '/sets': typeof SetsRoute
   '/settings': typeof SettingsRoute
   '/campaigns/$id': typeof CampaignsIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
   '/results/$runId': typeof ResultsRunIdRoute
   '/campaigns/': typeof CampaignsIndexRoute
   '/api/public/hooks/run-daily-agent': typeof ApiPublicHooksRunDailyAgentRoute
+  '/api/public/hooks/sync-crm-daily': typeof ApiPublicHooksSyncCrmDailyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/data'
     | '/history'
     | '/queue'
+    | '/sets'
     | '/settings'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/results/$runId'
     | '/campaigns/'
     | '/api/public/hooks/run-daily-agent'
+    | '/api/public/hooks/sync-crm-daily'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/data'
     | '/history'
     | '/queue'
+    | '/sets'
     | '/settings'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/results/$runId'
     | '/campaigns'
     | '/api/public/hooks/run-daily-agent'
+    | '/api/public/hooks/sync-crm-daily'
   id:
     | '__root__'
     | '/'
     | '/auth'
+    | '/data'
     | '/history'
     | '/queue'
+    | '/sets'
     | '/settings'
     | '/campaigns/$id'
     | '/campaigns/new'
     | '/results/$runId'
     | '/campaigns/'
     | '/api/public/hooks/run-daily-agent'
+    | '/api/public/hooks/sync-crm-daily'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  DataRoute: typeof DataRoute
   HistoryRoute: typeof HistoryRoute
   QueueRoute: typeof QueueRoute
+  SetsRoute: typeof SetsRoute
   SettingsRoute: typeof SettingsRoute
   CampaignsIdRoute: typeof CampaignsIdRoute
   CampaignsNewRoute: typeof CampaignsNewRoute
   ResultsRunIdRoute: typeof ResultsRunIdRoute
   CampaignsIndexRoute: typeof CampaignsIndexRoute
   ApiPublicHooksRunDailyAgentRoute: typeof ApiPublicHooksRunDailyAgentRoute
+  ApiPublicHooksSyncCrmDailyRoute: typeof ApiPublicHooksSyncCrmDailyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -168,6 +208,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sets': {
+      id: '/sets'
+      path: '/sets'
+      fullPath: '/sets'
+      preLoaderRoute: typeof SetsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/queue': {
@@ -182,6 +229,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data': {
+      id: '/data'
+      path: '/data'
+      fullPath: '/data'
+      preLoaderRoute: typeof DataRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -226,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sync-crm-daily': {
+      id: '/api/public/hooks/sync-crm-daily'
+      path: '/api/public/hooks/sync-crm-daily'
+      fullPath: '/api/public/hooks/sync-crm-daily'
+      preLoaderRoute: typeof ApiPublicHooksSyncCrmDailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/run-daily-agent': {
       id: '/api/public/hooks/run-daily-agent'
       path: '/api/public/hooks/run-daily-agent'
@@ -239,14 +300,17 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  DataRoute: DataRoute,
   HistoryRoute: HistoryRoute,
   QueueRoute: QueueRoute,
+  SetsRoute: SetsRoute,
   SettingsRoute: SettingsRoute,
   CampaignsIdRoute: CampaignsIdRoute,
   CampaignsNewRoute: CampaignsNewRoute,
   ResultsRunIdRoute: ResultsRunIdRoute,
   CampaignsIndexRoute: CampaignsIndexRoute,
   ApiPublicHooksRunDailyAgentRoute: ApiPublicHooksRunDailyAgentRoute,
+  ApiPublicHooksSyncCrmDailyRoute: ApiPublicHooksSyncCrmDailyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
