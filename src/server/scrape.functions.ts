@@ -35,7 +35,7 @@ export const createScrapeRun = createServerFn({ method: "POST" })
     if (error || !run) {
       return { runId: null as string | null, error: error?.message ?? "Failed to create run" };
     }
-    return { runId: run.id, error: null as string | null };
+    return { runId: runRow.id, error: null as string | null };
   });
 
 // 2) Execute the scrape. The client fires this and does NOT await it — the UI
@@ -59,15 +59,15 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
     const runRow = run;
 
     const sources = runRow.sources as Source[];
-    const progress: RunProgress = (run.progress as RunProgress) ?? {};
+    const progress: RunProgress = (runRow.progress as RunProgress) ?? {};
 
     // Mark run as running
     await supabase
       .from("scrape_runs")
       .update({ status: "running", started_at: new Date().toISOString() })
-      .eq("id", run.id);
+      .eq("id", runRow.id);
 
-    const queryCategory = run.query.split(/\s+in\s+|\s+at\s+|,/i)[0]?.trim();
+    const queryCategory = runRow.query.split(/\s+in\s+|\s+at\s+|,/i)[0]?.trim();
 
     // Helper: persist progress for a single source
     async function setSourceProgress(source: Source, patch: Partial<SourceProgress>) {
@@ -75,7 +75,7 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
       await supabase
         .from("scrape_runs")
         .update({ progress: progress as unknown as never })
-        .eq("id", run.id);
+        .eq("id", runRow.id);
     }
 
     const tasks = sources.map(async (source) => {
@@ -83,9 +83,9 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
 
       const { leads, sourceUrl, error: scrapeErr } = await scrapeSource({
         source,
-        query: run.query,
-        city: run.city ?? null,
-        limit: run.results_per_source,
+        query: runRow.query,
+        city: runRow.city ?? null,
+        limit: runRow.results_per_source,
       });
 
       if (scrapeErr && leads.length === 0) {
@@ -116,12 +116,12 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
         const { error: insErr } = await supabase.from("leads").insert([
           {
             user_id: userId,
-            run_id: run.id,
+            run_id: runRow.id,
             name: raw.name ?? null,
             phone: raw.phone ?? null,
             email: raw.email ?? null,
             address: raw.address ?? null,
-            city: raw.city ?? run.city ?? null,
+            city: raw.city ?? runRow.city ?? null,
             category: raw.category ?? null,
             rating: raw.rating ?? null,
             reviews_count: raw.reviews_count ?? null,
@@ -166,7 +166,7 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
         error: errors.length ? errors.join(" | ") : null,
         finished_at: new Date().toISOString(),
       })
-      .eq("id", run.id);
+      .eq("id", runRow.id);
 
     return { ok: true, total, errors };
   });
