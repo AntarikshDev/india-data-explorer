@@ -666,23 +666,9 @@ function QueuePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Notes modal */}
-      <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
-        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-sm p-4 sm:p-6 rounded-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 pr-6">
-              <span>Log this call</span>
-              {callStart && (
-                <span className={`text-xs font-mono ${callEnd ? "text-muted-foreground" : "text-red-600"}`}>
-                  {callEnd ? "" : "● "}{elapsedStr}
-                </span>
-              )}
-            </DialogTitle>
-            <DialogDescription className="truncate">
-              {current?.name ?? "Lead"} · {current?.phone ? `••• ${current.phone.slice(-4)}` : ""}
-            </DialogDescription>
-          </DialogHeader>
-
+      {/* Notes modal — Drawer (bottom sheet) on mobile, Dialog on desktop */}
+      {(() => {
+        const body = (
           <div className="space-y-3">
             {callStart && !callEnd && (
               <button
@@ -724,7 +710,7 @@ function QueuePage() {
                     key={o.key}
                     onClick={() => submitOutcome(o.key)}
                     disabled={logging}
-                    className={`flex items-center justify-center gap-1 rounded-md border h-10 text-xs font-medium transition disabled:opacity-50 ${toneClass[o.tone]}`}
+                    className={`flex items-center justify-center gap-1 rounded-md border h-11 text-xs font-medium transition disabled:opacity-50 touch-manipulation ${toneClass[o.tone]}`}
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{o.label}</span>
@@ -733,26 +719,74 @@ function QueuePage() {
               })}
             </div>
           </div>
+        );
 
-          <DialogFooter className="flex-row justify-between items-center gap-2 sm:gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setNotesOpen(false);
-                resetForm();
-              }}
-            >
-              Cancel
-            </Button>
-            {logging && (
-              <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+        const titleNode = (
+          <span className="flex items-center gap-2">
+            <span>Log this call</span>
+            {callStart && (
+              <span className={`text-xs font-mono ${callEnd ? "text-muted-foreground" : "text-red-600"}`}>
+                {callEnd ? "" : "● "}{elapsedStr}
               </span>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </span>
+        );
+
+        const descText = `${current?.name ?? "Lead"} · ${current?.phone ? `••• ${current.phone.slice(-4)}` : ""}`;
+
+        const cancelBtn = (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setNotesOpen(false);
+              resetForm();
+            }}
+          >
+            Cancel
+          </Button>
+        );
+
+        const savingNode = logging ? (
+          <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+          </span>
+        ) : null;
+
+        if (isMobile) {
+          return (
+            <Drawer open={notesOpen} onOpenChange={setNotesOpen}>
+              <DrawerContent className="px-4 pb-[max(env(safe-area-inset-bottom),1rem)] max-h-[92vh]">
+                <DrawerHeader className="px-0 text-left">
+                  <DrawerTitle>{titleNode}</DrawerTitle>
+                  <DrawerDescription className="truncate">{descText}</DrawerDescription>
+                </DrawerHeader>
+                <div className="overflow-y-auto">{body}</div>
+                <DrawerFooter className="px-0 pt-3 flex-row justify-between items-center">
+                  {cancelBtn}
+                  {savingNode}
+                </DrawerFooter>
+              </DrawerContent>
+            </Drawer>
+          );
+        }
+
+        return (
+          <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
+            <DialogContent className="w-[calc(100vw-1.5rem)] max-w-sm p-4 sm:p-6 rounded-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 pr-6">{titleNode}</DialogTitle>
+                <DialogDescription className="truncate">{descText}</DialogDescription>
+              </DialogHeader>
+              {body}
+              <DialogFooter className="flex-row justify-between items-center gap-2 sm:gap-2">
+                {cancelBtn}
+                {savingNode}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
     </div>
   );
 }
