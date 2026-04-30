@@ -255,47 +255,88 @@ function DataCentrePage() {
         </div>
       </Card>
 
-      <Card className="overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Score</TableHead>
-              <TableHead>Source</TableHead>
-              <TableHead>Scraped</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading && (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
-            )}
-            {!loading && rows.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No leads.</TableCell></TableRow>
-            )}
-            {rows.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="font-medium max-w-[180px] truncate">{r.name ?? "—"}</TableCell>
-                <TableCell className="font-mono text-xs">{r.phone}</TableCell>
-                <TableCell className="text-xs max-w-[200px] truncate">
-                  {[r.locality_name, r.district_name ?? r.city, r.state_code].filter(Boolean).join(" · ") || "—"}
-                </TableCell>
-                <TableCell className="text-xs max-w-[140px] truncate">{r.category ?? "—"}</TableCell>
-                <TableCell><Badge variant="secondary">{r.score}</Badge></TableCell>
-                <TableCell className="text-xs">{SOURCE_LABELS[r.source]}</TableCell>
-                <TableCell className="text-xs">{new Date(r.scraped_at).toLocaleDateString()}</TableCell>
-                <TableCell>
-                  <Button size="icon" variant="ghost" onClick={() => setEditing(r)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </TableCell>
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-2">
+        {loading && (
+          <Card className="p-6 text-center text-xs text-muted-foreground">Loading…</Card>
+        )}
+        {!loading && rows.length === 0 && (
+          <Card className="p-6 text-center text-xs text-muted-foreground">No leads.</Card>
+        )}
+        {!loading &&
+          rows.map((r) => (
+            <Card
+              key={r.id}
+              className="p-3 flex items-start gap-2 active:bg-accent/40 transition-colors"
+              onClick={() => setEditing(r)}
+            >
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium truncate text-sm">{r.name ?? "—"}</span>
+                  <Badge variant="secondary" className="text-[10px] h-4 px-1.5 shrink-0">
+                    {r.score}
+                  </Badge>
+                </div>
+                <div className="font-mono text-xs text-foreground/80">{r.phone}</div>
+                <div className="text-[11px] text-muted-foreground truncate">
+                  {[r.locality_name, r.district_name ?? r.city, r.state_code]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                  {r.category && <> · {r.category}</>}
+                </div>
+                <div className="text-[10px] text-muted-foreground/80">
+                  {SOURCE_LABELS[r.source]} · {new Date(r.scraped_at).toLocaleDateString()}
+                </div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+            </Card>
+          ))}
+      </div>
+
+      {/* Desktop table */}
+      <Card className="hidden md:block overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Location</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Score</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead>Scraped</TableHead>
+                <TableHead></TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {loading && (
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Loading…</TableCell></TableRow>
+              )}
+              {!loading && rows.length === 0 && (
+                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No leads.</TableCell></TableRow>
+              )}
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium max-w-[180px] truncate">{r.name ?? "—"}</TableCell>
+                  <TableCell className="font-mono text-xs">{r.phone}</TableCell>
+                  <TableCell className="text-xs max-w-[200px] truncate">
+                    {[r.locality_name, r.district_name ?? r.city, r.state_code].filter(Boolean).join(" · ") || "—"}
+                  </TableCell>
+                  <TableCell className="text-xs max-w-[140px] truncate">{r.category ?? "—"}</TableCell>
+                  <TableCell><Badge variant="secondary">{r.score}</Badge></TableCell>
+                  <TableCell className="text-xs">{SOURCE_LABELS[r.source]}</TableCell>
+                  <TableCell className="text-xs">{new Date(r.scraped_at).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    <Button size="icon" variant="ghost" onClick={() => setEditing(r)}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </Card>
 
       {pages > 1 && (
