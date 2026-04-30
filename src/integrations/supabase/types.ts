@@ -14,6 +14,161 @@ export type Database = {
   }
   public: {
     Tables: {
+      call_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          lead_id: string
+          next_action_at: string | null
+          notes: string | null
+          outcome: Database["public"]["Enums"]["call_outcome"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_id: string
+          next_action_at?: string | null
+          notes?: string | null
+          outcome: Database["public"]["Enums"]["call_outcome"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_id?: string
+          next_action_at?: string | null
+          notes?: string | null
+          outcome?: Database["public"]["Enums"]["call_outcome"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      campaign_targets: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          district_id: string | null
+          district_name: string | null
+          id: string
+          leads_inserted: number
+          locality_id: string | null
+          locality_name: string | null
+          position: number
+          ran_at: string | null
+          scheduled_for: string | null
+          scrape_run_id: string | null
+          state_code: string
+          status: Database["public"]["Enums"]["target_status"]
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          district_id?: string | null
+          district_name?: string | null
+          id?: string
+          leads_inserted?: number
+          locality_id?: string | null
+          locality_name?: string | null
+          position?: number
+          ran_at?: string | null
+          scheduled_for?: string | null
+          scrape_run_id?: string | null
+          state_code: string
+          status?: Database["public"]["Enums"]["target_status"]
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          district_id?: string | null
+          district_name?: string | null
+          id?: string
+          leads_inserted?: number
+          locality_id?: string | null
+          locality_name?: string | null
+          position?: number
+          ran_at?: string | null
+          scheduled_for?: string | null
+          scrape_run_id?: string | null
+          state_code?: string
+          status?: Database["public"]["Enums"]["target_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_targets_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          created_at: string
+          current_district_id: string | null
+          current_state_code: string | null
+          daily_target_cap: number
+          exhaustion_streak: number
+          id: string
+          last_run_at: string | null
+          name: string
+          per_district_cap: number
+          query_template: string
+          results_per_source: number
+          schedule_enabled: boolean
+          sources: string[]
+          start_state_code: string
+          state_coverage_threshold: number
+          status: Database["public"]["Enums"]["campaign_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_district_id?: string | null
+          current_state_code?: string | null
+          daily_target_cap?: number
+          exhaustion_streak?: number
+          id?: string
+          last_run_at?: string | null
+          name: string
+          per_district_cap?: number
+          query_template: string
+          results_per_source?: number
+          schedule_enabled?: boolean
+          sources?: string[]
+          start_state_code: string
+          state_coverage_threshold?: number
+          status?: Database["public"]["Enums"]["campaign_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_district_id?: string | null
+          current_state_code?: string | null
+          daily_target_cap?: number
+          exhaustion_streak?: number
+          id?: string
+          last_run_at?: string | null
+          name?: string
+          per_district_cap?: number
+          query_template?: string
+          results_per_source?: number
+          schedule_enabled?: boolean
+          sources?: string[]
+          start_state_code?: string
+          state_coverage_threshold?: number
+          status?: Database["public"]["Enums"]["campaign_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       crm_settings: {
         Row: {
           api_key: string | null
@@ -212,6 +367,39 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          kind: string
+          payload: Json | null
+          read_at: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          payload?: Json | null
+          read_at?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json | null
+          read_at?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -295,7 +483,20 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      call_outcome:
+        | "connected"
+        | "voicemail"
+        | "not_interested"
+        | "follow_up"
+        | "wrong_number"
+        | "skip"
+      campaign_status:
+        | "draft"
+        | "active"
+        | "paused"
+        | "awaiting_next_state"
+        | "completed"
+      target_status: "queued" | "running" | "done" | "skipped" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -422,6 +623,23 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      call_outcome: [
+        "connected",
+        "voicemail",
+        "not_interested",
+        "follow_up",
+        "wrong_number",
+        "skip",
+      ],
+      campaign_status: [
+        "draft",
+        "active",
+        "paused",
+        "awaiting_next_state",
+        "completed",
+      ],
+      target_status: ["queued", "running", "done", "skipped", "failed"],
+    },
   },
 } as const
