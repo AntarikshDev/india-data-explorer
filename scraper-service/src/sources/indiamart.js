@@ -23,13 +23,16 @@ export async function scrapeIndiaMart(page, { query, city, limit }) {
       if (n >= max) return;
       const name =
         card.querySelector(".companyname, .cardlinks h2, .lcname a, h2")?.textContent?.trim() || null;
-      // Phone: spans with mobile / phone classes, or any +91 pattern in card text
-      let phone =
-        card.querySelector(".pns_h, .duet, [class*='mobileNo']")?.textContent?.trim() || null;
+      // Phone: prefer regex over the card text (selector classes drift often).
+      let phone = null;
+      const cardTxt = card.textContent || "";
+      const mobileMatch = cardTxt.match(/(?:\+?91[\s-]?)?\b[6-9]\d{4}[\s-]?\d{5}\b/);
+      const landlineMatch = cardTxt.match(/\b0?\d{2,4}[\s-]?\d{6,8}\b/);
+      if (mobileMatch) phone = mobileMatch[0];
+      else if (landlineMatch) phone = landlineMatch[0];
       if (!phone) {
-        const txt = card.textContent || "";
-        const m = txt.match(/(\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}/);
-        if (m) phone = m[0];
+        const sel = card.querySelector(".pns_h, .duet, [class*='mobileNo']")?.textContent?.trim();
+        if (sel && !/show|click/i.test(sel)) phone = sel;
       }
       const address =
         card.querySelector(".newad, .sl_addr, [class*='address']")?.textContent?.trim() || null;
