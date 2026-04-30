@@ -110,16 +110,21 @@ export async function scrapeJustDial(page, { query, city, limit }) {
             ".resultbox_title_anchor, h2 a, .lng_cont_name, .resultbox_title h2",
           )
           ?.textContent?.trim() || null;
-      let phone =
-        card
-          .querySelector(
-            ".callcontent, .contact-info a, [class*='callNumber'], .green-box + span",
-          )
-          ?.textContent?.trim() || null;
+      // Always grep the card text for phone — the dedicated selectors often
+      // return "Show Number" button label or stale placeholder text.
+      let phone = null;
+      const cardTxt = card.textContent || "";
+      // Prefer mobile (10 digits starting 6-9), then landline with STD code.
+      const mobileMatch = cardTxt.match(/(?:\+?91[\s-]?)?\b[6-9]\d{4}[\s-]?\d{5}\b/);
+      const landlineMatch = cardTxt.match(/\b0?\d{2,4}[\s-]?\d{6,8}\b/);
+      if (mobileMatch) phone = mobileMatch[0];
+      else if (landlineMatch) phone = landlineMatch[0];
+      // Fallback to selector-based extraction if regex found nothing.
       if (!phone) {
-        const txt = card.textContent || "";
-        const m = txt.match(/(\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}/);
-        if (m) phone = m[0];
+        const sel = card.querySelector(
+          ".callcontent, .contact-info a, [class*='callNumber'], .green-box + span",
+        )?.textContent?.trim();
+        if (sel && !/show\s*number/i.test(sel)) phone = sel;
       }
       const ratingTxt = card
         .querySelector(".resultbox_totalrate, .green-box, [class*='rating']")
