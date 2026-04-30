@@ -34,10 +34,14 @@ export const Route = createRootRoute({
       { name: "description", content: "Scrape Google Maps, JustDial, and IndiaMART for sales leads. Export to Excel or push to CRM." },
       { name: "author", content: "EdSetu" },
       { property: "og:title", content: "EdSetu Lead Scraper" },
-      { property: "og:description", content: "Scrape Google Maps, JustDial, and IndiaMART for sales leads." },
+      { property: "og:description", content: "Scrape Google Maps, JustDial, and IndiaMART for sales leads. Export to Excel or push to CRM." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "EdSetu Lead Scraper" },
+      { name: "twitter:description", content: "Scrape Google Maps, JustDial, and IndiaMART for sales leads. Export to Excel or push to CRM." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fdde56eb-f50f-44f3-98fd-57d7fc7f12e9/id-preview-bdd82b53--9c789170-636a-4368-b1ab-15e511bfead6.lovable.app-1777541395077.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fdde56eb-f50f-44f3-98fd-57d7fc7f12e9/id-preview-bdd82b53--9c789170-636a-4368-b1ab-15e511bfead6.lovable.app-1777541395077.png" },
     ],
     links: [
       {
