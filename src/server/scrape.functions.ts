@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-client-middleware";
 import { scrapeSource, dedupeHash, scoreLead } from "./firecrawl.server";
+import { isCustomScraperEnabled, scrapeViaService } from "./scraperService.server";
+import { normalizeIndianMobile } from "./phone.server";
 import { StartSchema, ExecuteSchema } from "./scrape.schemas";
 import type { Source, RunProgress, SourceProgress } from "@/lib/leadTypes";
 
