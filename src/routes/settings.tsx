@@ -28,6 +28,9 @@ function SettingsPage() {
   const [apiKey, setApiKey] = useState("");
   const [enabled, setEnabled] = useState(false);
   const [cap, setCap] = useState(200);
+  const [crmWebhookUrl, setCrmWebhookUrl] = useState("");
+  const [dailySync, setDailySync] = useState(false);
+  const [lastSync, setLastSync] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -41,6 +44,9 @@ function SettingsPage() {
           setApiKey(data.api_key ?? "");
           setEnabled(data.enabled);
           setCap(data.daily_credit_cap);
+          setCrmWebhookUrl(data.crm_webhook_url ?? "");
+          setDailySync(data.daily_sync_enabled ?? false);
+          setLastSync(data.last_daily_sync_at ?? null);
         }
       });
   }, []);
@@ -51,7 +57,14 @@ function SettingsPage() {
     if (!u.user) return;
     const { error } = await supabase
       .from("crm_settings")
-      .update({ endpoint_url: endpointUrl || null, api_key: apiKey || null, enabled, daily_credit_cap: cap })
+      .update({
+        endpoint_url: endpointUrl || null,
+        api_key: apiKey || null,
+        enabled,
+        daily_credit_cap: cap,
+        crm_webhook_url: crmWebhookUrl || null,
+        daily_sync_enabled: dailySync,
+      })
       .eq("user_id", u.user.id);
     setBusy(false);
     if (error) toast.error(error.message);
@@ -64,13 +77,43 @@ function SettingsPage() {
 
       <Card className="p-6 space-y-5">
         <div>
-          <h2 className="font-semibold">EdSetu Command CRM</h2>
+          <h2 className="font-semibold">EdSetu Command — Daily Sync (8 PM IST)</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Push selected leads from any results page directly into your CRM. Your CRM should expose an HTTPS endpoint
-            that accepts <code className="text-xs bg-muted px-1 rounded">POST {`{ leads: [...] }`}</code>.
+            Every night at 8 PM IST, this app will POST today's call attempts to your EdSetu Command webhook
+            so all responses land in your CRM automatically.
           </p>
         </div>
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div>
+            <Label htmlFor="ds" className="cursor-pointer">Enable daily sync</Label>
+            <p className="text-xs text-muted-foreground">
+              {lastSync ? `Last sync: ${new Date(lastSync).toLocaleString()}` : "Not synced yet"}
+            </p>
+          </div>
+          <Switch id="ds" checked={dailySync} onCheckedChange={setDailySync} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="hook">Webhook URL</Label>
+          <Input
+            id="hook"
+            type="url"
+            placeholder="https://edsetu-command.lovable.app/api/public/hooks/import-call-log"
+            value={crmWebhookUrl}
+            onChange={(e) => setCrmWebhookUrl(e.target.value)}
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Receives <code>{`{ date, attempts: [...] }`}</code>. The optional API key below is sent as <code>Authorization: Bearer …</code>.
+          </p>
+        </div>
+      </Card>
 
+      <Card className="p-6 space-y-5">
+        <div>
+          <h2 className="font-semibold">Per-page CRM Push (legacy)</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Used by the "Push to CRM" button on results pages. Accepts <code>POST {`{ leads: [...] }`}</code>.
+          </p>
+        </div>
         <div className="flex items-center justify-between rounded-lg border p-3">
           <div>
             <Label htmlFor="enabled" className="cursor-pointer">Enable CRM push</Label>
@@ -78,14 +121,18 @@ function SettingsPage() {
           </div>
           <Switch id="enabled" checked={enabled} onCheckedChange={setEnabled} />
         </div>
-
         <div className="space-y-2">
           <Label htmlFor="url">Endpoint URL</Label>
-          <Input id="url" type="url" placeholder="https://your-crm.lovable.app/api/public/leads/import" value={endpointUrl} onChange={(e) => setEndpointUrl(e.target.value)} />
+          <Input
+            id="url"
+            type="url"
+            placeholder="https://your-crm.lovable.app/api/public/leads/import"
+            value={endpointUrl}
+            onChange={(e) => setEndpointUrl(e.target.value)}
+          />
         </div>
-
         <div className="space-y-2">
-          <Label htmlFor="key">API key (optional, sent as Bearer token)</Label>
+          <Label htmlFor="key">API key (Bearer token, used by both)</Label>
           <Input id="key" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
         </div>
       </Card>
