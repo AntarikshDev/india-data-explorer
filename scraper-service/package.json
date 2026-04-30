@@ -1,0 +1,19 @@
+{
+  "name": "edsetu-scraper-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-hosted Playwright scraper for Google Maps, JustDial, IndiaMART. Deploy to Railway/Render.",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "postinstall": "playwright install --with-deps chromium"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "playwright": "^1.49.1"
+  }
+}

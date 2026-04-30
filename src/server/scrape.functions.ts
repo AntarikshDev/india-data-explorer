@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-client-middleware";
 import { scrapeSource, dedupeHash, scoreLead } from "./firecrawl.server";
+import { isCustomScraperEnabled, scrapeViaService } from "./scraperService.server";
+import { normalizeIndianMobile } from "./phone.server";
 import { StartSchema, ExecuteSchema } from "./scrape.schemas";
 import type { Source, RunProgress, SourceProgress } from "@/lib/leadTypes";
 
@@ -81,12 +83,20 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
     const tasks = sources.map(async (source) => {
       await setSourceProgress(source, { status: "running", started_at: new Date().toISOString() });
 
-      const { leads, sourceUrl, error: scrapeErr } = await scrapeSource({
-        source,
-        query: runRow.query,
-        city: runRow.city ?? null,
-        limit: runRow.results_per_source,
-      });
+      const useCustom = isCustomScraperEnabled();
+      const { leads, sourceUrl, error: scrapeErr } = useCustom
+        ? await scrapeViaService({
+            source,
+            query: runRow.query,
+            city: runRow.city ?? null,
+            limit: runRow.results_per_source,
+          })
+        : await scrapeSource({
+            source,
+            query: runRow.query,
+            city: runRow.city ?? null,
+            limit: runRow.results_per_source,
+          });
 
       if (scrapeErr && leads.length === 0) {
         await setSourceProgress(source, {
@@ -98,13 +108,20 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
       }
 
       let inserted = 0;
+      let rejectedNoPhone = 0;
       for (const raw of leads) {
-        const hash = dedupeHash(source, raw.name, raw.phone);
+        // Strict phone gate: only keep leads with a real Indian mobile.
+        const validPhone = normalizeIndianMobile(raw.phone);
+        if (!validPhone) {
+          rejectedNoPhone++;
+          continue;
+        }
+        const hash = dedupeHash(source, raw.name, validPhone);
         const website = raw.business_website ?? null;
         const listing = raw.listing_url ?? null;
         const { score, reasons } = scoreLead(
           {
-            phone: raw.phone,
+            phone: validPhone,
             email: raw.email,
             rating: raw.rating,
             reviews_count: raw.reviews_count,
@@ -118,7 +135,7 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
             user_id: userId,
             run_id: runRow.id,
             name: raw.name ?? null,
-            phone: raw.phone ?? null,
+            phone: validPhone,
             email: raw.email ?? null,
             address: raw.address ?? null,
             city: raw.city ?? runRow.city ?? null,
@@ -142,6 +159,9 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
             await setSourceProgress(source, { status: "running", inserted });
           }
         }
+      }
+      if (rejectedNoPhone > 0) {
+        console.log(`[${source}] dropped ${rejectedNoPhone} leads with invalid/junk phone`);
       }
 
       await setSourceProgress(source, {
