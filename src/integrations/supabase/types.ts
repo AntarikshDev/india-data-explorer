@@ -14,7 +14,176 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      crm_settings: {
+        Row: {
+          api_key: string | null
+          created_at: string
+          daily_credit_cap: number
+          enabled: boolean
+          endpoint_url: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key?: string | null
+          created_at?: string
+          daily_credit_cap?: number
+          enabled?: boolean
+          endpoint_url?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key?: string | null
+          created_at?: string
+          daily_credit_cap?: number
+          enabled?: boolean
+          endpoint_url?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          address: string | null
+          category: string | null
+          city: string | null
+          dedupe_hash: string
+          email: string | null
+          id: string
+          name: string | null
+          phone: string | null
+          pushed_to_crm_at: string | null
+          rating: number | null
+          raw_json: Json | null
+          reviews_count: number | null
+          run_id: string
+          scraped_at: string
+          source: string
+          source_url: string | null
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          category?: string | null
+          city?: string | null
+          dedupe_hash: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          pushed_to_crm_at?: string | null
+          rating?: number | null
+          raw_json?: Json | null
+          reviews_count?: number | null
+          run_id: string
+          scraped_at?: string
+          source: string
+          source_url?: string | null
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          category?: string | null
+          city?: string | null
+          dedupe_hash?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          pushed_to_crm_at?: string | null
+          rating?: number | null
+          raw_json?: Json | null
+          reviews_count?: number | null
+          run_id?: string
+          scraped_at?: string
+          source?: string
+          source_url?: string | null
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "scrape_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      scrape_runs: {
+        Row: {
+          city: string | null
+          created_at: string
+          error: string | null
+          id: string
+          query: string
+          results_per_source: number
+          sources: string[]
+          status: string
+          total_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          query: string
+          results_per_source?: number
+          sources?: string[]
+          status?: string
+          total_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          query?: string
+          results_per_source?: number
+          sources?: string[]
+          status?: string
+          total_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
