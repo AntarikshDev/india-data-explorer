@@ -90,15 +90,15 @@ function SearchPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Find leads</h1>
-        <p className="text-muted-foreground">
+    <div className="max-w-3xl mx-auto space-y-5 md:space-y-6">
+      <div className="space-y-1.5 md:space-y-2">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Find leads</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           Pick a location, type what you're looking for. We scrape, score, and rank.
         </p>
       </div>
 
-      <Card className="p-6 space-y-6">
+      <Card className="p-4 md:p-6 space-y-5 md:space-y-6">
         <div className="space-y-2">
           <Label htmlFor="q">Search query</Label>
           <Input

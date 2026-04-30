@@ -346,7 +346,7 @@ function QueuePage() {
   const elapsedStr = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
 
   return (
-    <div className="max-w-2xl mx-auto px-3 py-3 space-y-3 overflow-x-hidden">
+    <div className="max-w-2xl mx-auto px-1 sm:px-3 py-2 sm:py-3 space-y-3 overflow-x-hidden">
       {/* Top bar */}
       <div className="flex items-center justify-between gap-2">
         <div>
