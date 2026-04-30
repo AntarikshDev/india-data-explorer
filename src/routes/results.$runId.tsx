@@ -10,9 +10,10 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { SOURCE_LABELS, type Lead, type ScrapeRun, type Source } from "@/lib/leadTypes";
+import { SOURCE_LABELS, type Lead, type ScrapeRun, type Source, type SourceProgress } from "@/lib/leadTypes";
+import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Download, Send, Trash2, ExternalLink, ArrowLeft } from "lucide-react";
+import { Download, Send, Trash2, ExternalLink, ArrowLeft, Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
 
 export const Route = createFileRoute("/results/$runId")({
   component: () => (
