@@ -74,7 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="container mx-auto px-4 py-8">
-        <Outlet />
+        {children}
       </main>
     </div>
   );
