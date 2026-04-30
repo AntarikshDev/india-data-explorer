@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { startScrapeRun } from "@/server/scrape.functions";
 import { AppShell } from "@/components/AppShell";
+import { GeoPicker, emptyGeoSelection, type GeoSelection } from "@/components/GeoPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { SOURCE_LABELS, type Source } from "@/lib/leadTypes";
 import { toast } from "sonner";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, MapPin } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: () => (
@@ -33,12 +34,15 @@ function SearchPage() {
   const navigate = useNavigate();
   const startFn = useServerFn(startScrapeRun);
   const [query, setQuery] = useState("");
-  const [city, setCity] = useState("");
+  const [geo, setGeo] = useState<GeoSelection>(emptyGeoSelection);
   const [sources, setSources] = useState<Source[]>(["justdial", "indiamart"]);
   const [perSource, setPerSource] = useState(25);
   const [running, setRunning] = useState(false);
 
-  const estCredits = sources.length * perSource;
+  const estCredits = sources.length * perSource * 1.5; // ~1 page + pagination amortised
+
+  // Derive the city string the scraper will use
+  const derivedCity = geo.localityName ?? geo.districtName ?? null;
 
   function toggle(s: Source) {
     setSources((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
@@ -52,7 +56,12 @@ function SearchPage() {
     setRunning(true);
     try {
       const res = await startFn({
-        data: { query: query.trim(), city: city.trim() || null, sources, resultsPerSource: perSource },
+        data: {
+          query: query.trim(),
+          city: derivedCity,
+          sources,
+          resultsPerSource: perSource,
+        },
       });
       toast.success(`Scrape complete — ${res.total} leads`);
       navigate({ to: "/results/$runId", params: { runId: res.runId } });
@@ -68,7 +77,7 @@ function SearchPage() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Find leads</h1>
         <p className="text-muted-foreground">
-          Type what you're looking for. We scrape, dedupe, and put it in a clean table.
+          Pick a location, type what you're looking for. We scrape, score, and rank.
         </p>
       </div>
 
@@ -77,15 +86,26 @@ function SearchPage() {
           <Label htmlFor="q">Search query</Label>
           <Input
             id="q"
-            placeholder='e.g. "Coaching classes in sector 135 Noida"'
+            placeholder='e.g. "Coaching classes"'
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
+          <p className="text-xs text-muted-foreground">
+            Tip: Don't include the city — pick it below for better targeting.
+          </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="city">City (optional, helps targeting)</Label>
-          <Input id="city" placeholder="e.g. Noida" value={city} onChange={(e) => setCity(e.target.value)} />
+          <Label className="flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5" /> Location
+          </Label>
+          <GeoPicker value={geo} onChange={setGeo} defaultStateCode="UP" />
+          {derivedCity && (
+            <p className="text-xs text-muted-foreground">
+              Targeting: <span className="font-medium text-foreground">{derivedCity}</span>
+              {geo.stateName && <>, {geo.stateName}</>}
+            </p>
+          )}
         </div>
 
         <div className="space-y-3">
@@ -124,7 +144,7 @@ function SearchPage() {
             step={5}
           />
           <p className="text-xs text-muted-foreground">
-            Estimated cost: ~{estCredits} Firecrawl credit{estCredits === 1 ? "" : "s"}
+            Estimated cost: ~{Math.ceil(estCredits)} Firecrawl credits (incl. pagination)
           </p>
         </div>
 
