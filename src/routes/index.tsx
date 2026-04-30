@@ -56,7 +56,7 @@ function SearchPage() {
     }
     setRunning(true);
     try {
-      const res = await startFn({
+      const res = await createRunFn({
         data: {
           query: query.trim(),
           city: derivedCity,
@@ -65,13 +65,17 @@ function SearchPage() {
         },
       });
       if (!res.runId) {
-        toast.error(res.errors?.[0] ?? "Scrape failed");
+        toast.error(res.error ?? "Could not start scrape");
         return;
       }
-      toast.success(`Scrape complete — ${res.total} leads`);
+      // Fire-and-forget the actual scrape — the results page subscribes via realtime.
+      executeRunFn({ data: { runId: res.runId } }).catch((err) => {
+        console.error("executeScrapeRun failed:", err);
+      });
+      toast.success("Scrape started — streaming results live");
       navigate({ to: "/results/$runId", params: { runId: res.runId } });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Scrape failed");
+      toast.error(e instanceof Error ? e.message : "Could not start scrape");
     } finally {
       setRunning(false);
     }
