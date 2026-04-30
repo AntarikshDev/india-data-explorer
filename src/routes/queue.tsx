@@ -283,7 +283,7 @@ function QueuePage() {
       return;
     }
     setLogging(true);
-    const durationSec = callStart ? Math.floor((Date.now() - callStart) / 1000) : 0;
+    const durationSec = callStart ? Math.max(0, Math.floor(((callEnd ?? Date.now()) - callStart) / 1000)) : 0;
     const res = await logFn({
       data: {
         leadId: current.id,
