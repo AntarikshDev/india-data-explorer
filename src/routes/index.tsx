@@ -28,7 +28,7 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-const ALL_SOURCES: Source[] = ["gmaps", "justdial", "indiamart"];
+const ALL_SOURCES: Source[] = ["gmaps", "justdial"];
 
 function SearchPage() {
   const navigate = useNavigate();
