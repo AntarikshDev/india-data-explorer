@@ -713,11 +713,11 @@ function TodayLog({
         {rows.map((a) => (
           <div key={a.id} className="border rounded-md p-2 text-xs space-y-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="font-medium truncate">{a.leads?.name ?? "—"}</span>
+              <span className="font-medium truncate">{a.lead?.name ?? "—"}</span>
               <Badge variant="outline" className="text-[10px]">{a.outcome.replace("_", " ")}</Badge>
             </div>
             <div className="text-muted-foreground text-[10px]">
-              {new Date(a.created_at).toLocaleTimeString()} · ••• {a.leads?.phone?.slice(-4) ?? ""}
+              {new Date(a.created_at).toLocaleTimeString()} · ••• {a.lead?.phone?.slice(-4) ?? ""}
             </div>
             {editing === a.id ? (
               <div className="flex gap-1.5">
