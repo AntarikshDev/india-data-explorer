@@ -41,18 +41,42 @@ const leadJsonSchema = {
   required: ["leads"],
 };
 
+function titleCase(s: string): string {
+  return s
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join("-");
+}
+
 function buildSourceUrl(source: Source, query: string, city: string | null, page: number): string {
-  const q = encodeURIComponent(query);
-  const c = encodeURIComponent((city || "").trim());
+  const cityRaw = (city || "").trim();
   switch (source) {
-    case "gmaps":
-      return `https://www.google.com/maps/search/${q}${c ? `+${c}` : ""}`;
+    case "gmaps": {
+      const q = encodeURIComponent(cityRaw ? `${query} ${cityRaw}` : query);
+      return `https://www.google.com/maps/search/${q}`;
+    }
     case "justdial": {
-      const base = c ? `https://www.justdial.com/${c}/${q.replace(/%20/g, "-")}` : `https://www.justdial.com/search?q=${q}`;
+      // JustDial expects: https://www.justdial.com/<City>/<Query-Hyphenated>/nct-10422745
+      // Fall back to global search if no city.
+      if (!cityRaw) {
+        const base = `https://www.justdial.com/search?q=${encodeURIComponent(query)}`;
+        return page > 1 ? `${base}&page=${page}` : base;
+      }
+      const citySlug = titleCase(cityRaw);
+      const querySlug = titleCase(query);
+      const base = `https://www.justdial.com/${citySlug}/${querySlug}`;
       return page > 1 ? `${base}/page-${page}` : base;
     }
-    case "indiamart":
-      return `https://dir.indiamart.com/search.mp?ss=${q}${c ? `&cq=${c}` : ""}${page > 1 ? `&start=${(page - 1) * 25}` : ""}`;
+    case "indiamart": {
+      const ss = query.trim().replace(/\s+/g, "+");
+      const cq = cityRaw.replace(/\s+/g, "+");
+      const base = `https://dir.indiamart.com/search.mp?ss=${encodeURIComponent(ss).replace(/%2B/g, "+")}${
+        cq ? `&cq=${encodeURIComponent(cq).replace(/%2B/g, "+")}` : ""
+      }`;
+      return page > 1 ? `${base}&start=${(page - 1) * 25}` : base;
+    }
   }
 }
 
