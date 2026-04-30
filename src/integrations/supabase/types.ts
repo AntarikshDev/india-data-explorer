@@ -47,6 +47,82 @@ export type Database = {
         }
         Relationships: []
       }
+      geo_districts: {
+        Row: {
+          hq_lat: number
+          hq_lng: number
+          id: string
+          name: string
+          state_code: string
+        }
+        Insert: {
+          hq_lat: number
+          hq_lng: number
+          id?: string
+          name: string
+          state_code: string
+        }
+        Update: {
+          hq_lat?: number
+          hq_lng?: number
+          id?: string
+          name?: string
+          state_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geo_districts_state_code_fkey"
+            columns: ["state_code"]
+            isOneToOne: false
+            referencedRelation: "geo_states"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      geo_localities: {
+        Row: {
+          district_id: string
+          id: string
+          kind: string
+          name: string
+        }
+        Insert: {
+          district_id: string
+          id?: string
+          kind?: string
+          name: string
+        }
+        Update: {
+          district_id?: string
+          id?: string
+          kind?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geo_localities_district_id_fkey"
+            columns: ["district_id"]
+            isOneToOne: false
+            referencedRelation: "geo_districts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      geo_states: {
+        Row: {
+          code: string
+          name: string
+        }
+        Insert: {
+          code: string
+          name: string
+        }
+        Update: {
+          code?: string
+          name?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           address: string | null
@@ -54,19 +130,25 @@ export type Database = {
           city: string | null
           dedupe_hash: string
           email: string | null
+          email_enriched: string | null
           id: string
+          listing_url: string | null
           name: string | null
+          owner_name: string | null
           phone: string | null
           pushed_to_crm_at: string | null
           rating: number | null
           raw_json: Json | null
           reviews_count: number | null
           run_id: string
+          score: number
+          score_reasons: Json | null
           scraped_at: string
           source: string
           source_url: string | null
           user_id: string
           website: string | null
+          whatsapp: string | null
         }
         Insert: {
           address?: string | null
@@ -74,19 +156,25 @@ export type Database = {
           city?: string | null
           dedupe_hash: string
           email?: string | null
+          email_enriched?: string | null
           id?: string
+          listing_url?: string | null
           name?: string | null
+          owner_name?: string | null
           phone?: string | null
           pushed_to_crm_at?: string | null
           rating?: number | null
           raw_json?: Json | null
           reviews_count?: number | null
           run_id: string
+          score?: number
+          score_reasons?: Json | null
           scraped_at?: string
           source: string
           source_url?: string | null
           user_id: string
           website?: string | null
+          whatsapp?: string | null
         }
         Update: {
           address?: string | null
@@ -94,19 +182,25 @@ export type Database = {
           city?: string | null
           dedupe_hash?: string
           email?: string | null
+          email_enriched?: string | null
           id?: string
+          listing_url?: string | null
           name?: string | null
+          owner_name?: string | null
           phone?: string | null
           pushed_to_crm_at?: string | null
           rating?: number | null
           raw_json?: Json | null
           reviews_count?: number | null
           run_id?: string
+          score?: number
+          score_reasons?: Json | null
           scraped_at?: string
           source?: string
           source_url?: string | null
           user_id?: string
           website?: string | null
+          whatsapp?: string | null
         }
         Relationships: [
           {
