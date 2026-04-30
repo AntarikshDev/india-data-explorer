@@ -182,78 +182,110 @@ function DataCentrePage() {
   const pages = useMemo(() => Math.ceil(total / PAGE), [total]);
   const page = Math.floor(offset / PAGE) + 1;
 
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterControls = (
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-7 gap-2">
+        <div className="lg:col-span-2 relative">
+          <Search className="h-3.5 w-3.5 absolute left-2 top-2.5 text-muted-foreground" />
+          <Input
+            className="h-9 text-xs pl-7"
+            placeholder="Search name / phone / city / category"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && load(0)}
+          />
+        </div>
+        <Select value={stateCode || "__any__"} onValueChange={(v) => { setStateCode(v === "__any__" ? "" : v); setDistrictId(""); setLocalityId(""); }}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="State" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__any__">All states</SelectItem>
+            {states.map((s) => <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={districtId || "__any__"} onValueChange={(v) => { setDistrictId(v === "__any__" ? "" : v); setLocalityId(""); }} disabled={!stateCode}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="District" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__any__">All districts</SelectItem>
+            {districts.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={localityId || "__any__"} onValueChange={(v) => setLocalityId(v === "__any__" ? "" : v)} disabled={!districtId}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Locality" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__any__">All localities</SelectItem>
+            {localities.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={source || "__any__"} onValueChange={(v) => setSource(v === "__any__" ? "" : (v as "gmaps" | "justdial"))}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Source" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__any__">All sources</SelectItem>
+            <SelectItem value="gmaps">Google Maps</SelectItem>
+            <SelectItem value="justdial">JustDial</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button size="sm" className="h-9 text-xs" onClick={() => { setOffset(0); load(0); setFiltersOpen(false); }}>Apply</Button>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+        <div>
+          <Label className="text-[10px]">Scraped from</Label>
+          <Input type="date" className="h-9 text-xs" value={from} onChange={(e) => setFrom(e.target.value)} />
+        </div>
+        <div>
+          <Label className="text-[10px]">Scraped to</Label>
+          <Input type="date" className="h-9 text-xs" value={to} onChange={(e) => setTo(e.target.value)} />
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Data Centre</h1>
-          <p className="text-xs text-muted-foreground">{total} leads · edits are tracked, no deletes</p>
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold">Data Centre</h1>
+          <p className="text-[11px] md:text-xs text-muted-foreground">{total} leads · edits tracked</p>
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileRef} type="file" accept=".csv" onChange={handleCsvUpload} className="hidden" />
-          <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-            <Upload className="h-3.5 w-3.5 mr-1" /> Import CSV
+          <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} className="h-9">
+            <Upload className="h-3.5 w-3.5 sm:mr-1" /> <span className="hidden sm:inline">Import</span>
           </Button>
-          <Button size="sm" variant="outline" onClick={exportCsv} disabled={rows.length === 0}>
-            <Download className="h-3.5 w-3.5 mr-1" /> Export
+          <Button size="sm" variant="outline" onClick={exportCsv} disabled={rows.length === 0} className="h-9">
+            <Download className="h-3.5 w-3.5 sm:mr-1" /> <span className="hidden sm:inline">Export</span>
           </Button>
         </div>
       </div>
 
-      <Card className="p-3">
-        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-7 gap-2">
-          <div className="lg:col-span-2 relative">
-            <Search className="h-3.5 w-3.5 absolute left-2 top-2.5 text-muted-foreground" />
-            <Input
-              className="h-8 text-xs pl-7"
-              placeholder="Search name / phone / city / category"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && load(0)}
-            />
-          </div>
-          <Select value={stateCode || "__any__"} onValueChange={(v) => { setStateCode(v === "__any__" ? "" : v); setDistrictId(""); setLocalityId(""); }}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="State" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__any__">All states</SelectItem>
-              {states.map((s) => <SelectItem key={s.code} value={s.code}>{s.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={districtId || "__any__"} onValueChange={(v) => { setDistrictId(v === "__any__" ? "" : v); setLocalityId(""); }} disabled={!stateCode}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="District" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__any__">All districts</SelectItem>
-              {districts.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={localityId || "__any__"} onValueChange={(v) => setLocalityId(v === "__any__" ? "" : v)} disabled={!districtId}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Locality" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__any__">All localities</SelectItem>
-              {localities.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={source || "__any__"} onValueChange={(v) => setSource(v === "__any__" ? "" : (v as "gmaps" | "justdial"))}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Source" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__any__">All sources</SelectItem>
-              <SelectItem value="gmaps">Google Maps</SelectItem>
-              <SelectItem value="justdial">JustDial</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button size="sm" className="h-8 text-xs" onClick={() => { setOffset(0); load(0); }}>Apply</Button>
+      {/* Mobile: search + filter trigger */}
+      <div className="md:hidden flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="h-3.5 w-3.5 absolute left-2 top-3 text-muted-foreground" />
+          <Input
+            className="h-10 pl-7"
+            placeholder="Search leads"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && load(0)}
+          />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
-          <div>
-            <Label className="text-[10px]">Scraped from</Label>
-            <Input type="date" className="h-8 text-xs" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </div>
-          <div>
-            <Label className="text-[10px]">Scraped to</Label>
-            <Input type="date" className="h-8 text-xs" value={to} onChange={(e) => setTo(e.target.value)} />
-          </div>
-        </div>
-      </Card>
+        <Drawer open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <Button variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => setFiltersOpen(true)}>
+            <SlidersHorizontal className="h-4 w-4" />
+          </Button>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Filters</DrawerTitle>
+            </DrawerHeader>
+            <div className="px-4 pb-6 space-y-2">{filterControls}</div>
+          </DrawerContent>
+        </Drawer>
+      </div>
+
+      {/* Desktop: full filter card */}
+      <Card className="p-3 hidden md:block">{filterControls}</Card>
+
 
       {/* Mobile card list */}
       <div className="md:hidden space-y-2">
