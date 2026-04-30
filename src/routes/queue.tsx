@@ -216,12 +216,12 @@ function QueuePage() {
 
   const current = leads[idx];
 
-  // Tick once per second while a call is in progress
+  // Tick once per 0.5s while a call is actively in progress (not yet ended)
   useEffect(() => {
-    if (!callStart) return;
+    if (!callStart || callEnd) return;
     const t = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(t);
-  }, [callStart]);
+  }, [callStart, callEnd]);
 
   // Auto-dial trigger
   useEffect(() => {
@@ -229,33 +229,50 @@ function QueuePage() {
     if (dialedRef.current === current.id) return;
     dialedRef.current = current.id;
     setCallStart(Date.now());
+    setCallEnd(null);
+    wentHiddenRef.current = false;
     window.location.href = `tel:+91${current.phone}`;
-    // Notes opens when user returns (visibility) — see below
   }, [autoMode, current]);
 
-  // iOS visibility: when user returns to the tab (call ended on iPhone),
-  // open notes modal automatically.
+  // iOS visibility: when tab is hidden, the OS call screen is up. When the tab
+  // becomes visible again the call has ended (or the user cancelled). Freeze
+  // the timer at that moment and open the notes modal.
   useEffect(() => {
     function onVis() {
-      if (document.visibilityState !== "visible") return;
       if (!callStart) return;
-      // small debounce so the tab fully settles
+      if (document.visibilityState === "hidden") {
+        wentHiddenRef.current = true;
+        return;
+      }
+      // visible again
+      if (!wentHiddenRef.current) return; // never went to call screen → ignore
+      if (callEnd) return;
+      const ended = Date.now();
+      // If gap was <2s, the call was never actually picked up by OS — treat as 0
+      const dur = ended - callStart;
+      setCallEnd(dur < 2000 ? callStart : ended);
       setTimeout(() => setNotesOpen(true), 250);
     }
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [callStart]);
+  }, [callStart, callEnd]);
 
   // Auto-advance safety: if a "call" is open >5min without notes, surface modal
+  // and stop the timer (likely the user forgot).
   useEffect(() => {
-    if (!callStart) return;
-    const t = setTimeout(() => setNotesOpen(true), 5 * 60 * 1000);
+    if (!callStart || callEnd) return;
+    const t = setTimeout(() => {
+      setCallEnd(Date.now());
+      setNotesOpen(true);
+    }, 5 * 60 * 1000);
     return () => clearTimeout(t);
-  }, [callStart]);
+  }, [callStart, callEnd]);
 
   function manualDial() {
     if (!current?.phone) return;
     setCallStart(Date.now());
+    setCallEnd(null);
+    wentHiddenRef.current = false;
     window.location.href = `tel:+91${current.phone}`;
   }
 
