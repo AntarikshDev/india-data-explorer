@@ -102,7 +102,7 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
         const fallback = await scrapeSource(scrapeInput);
         leads = fallback.leads;
         sourceUrl = fallback.sourceUrl;
-        scrapeErr = fallback.error ?? (fallback.leads.length ? null : scrapeErr);
+        scrapeErr = fallback.error ?? (fallback.leads.length ? undefined : scrapeErr);
       }
 
       if (scrapeErr && leads.length === 0) {
