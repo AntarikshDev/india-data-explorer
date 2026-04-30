@@ -71,6 +71,21 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
 
     const queryCategory = runRow.query.split(/\s+in\s+|\s+at\s+|,/i)[0]?.trim();
 
+    // GLOBAL DEDUP: pre-load every dedupe_hash this user already owns,
+    // so leads found in any prior run are silently skipped (no DB row,
+    // no progress count). Set is shared & mutated across parallel sources
+    // to also dedupe between sources within the same run.
+    const seenHashes = new Set<string>();
+    {
+      const { data: existing } = await supabase
+        .from("leads")
+        .select("dedupe_hash")
+        .eq("user_id", userId);
+      for (const row of existing ?? []) {
+        if (row.dedupe_hash) seenHashes.add(row.dedupe_hash);
+      }
+    }
+
     // Helper: persist progress for a single source
     async function setSourceProgress(source: Source, patch: Partial<SourceProgress>) {
       progress[source] = { ...(progress[source] ?? { status: "pending", inserted: 0 }), ...patch };
