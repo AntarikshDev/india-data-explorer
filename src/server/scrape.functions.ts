@@ -52,23 +52,25 @@ export const startScrapeRun = createServerFn({ method: "POST" })
       let inserted = 0;
       for (const raw of leads) {
         const hash = dedupeHash(source, raw.name, raw.phone);
-        const { error: insErr } = await supabase.from("leads").insert({
-          user_id: userId,
-          run_id: run.id,
-          name: raw.name ?? null,
-          phone: raw.phone ?? null,
-          email: raw.email ?? null,
-          address: raw.address ?? null,
-          city: raw.city ?? data.city ?? null,
-          category: raw.category ?? null,
-          rating: raw.rating ?? null,
-          reviews_count: raw.reviews_count ?? null,
-          website: raw.website ?? null,
-          source,
-          source_url: sourceUrl,
-          raw_json: raw,
-          dedupe_hash: hash,
-        });
+        const { error: insErr } = await supabase.from("leads").insert([
+          {
+            user_id: userId,
+            run_id: run.id,
+            name: raw.name ?? null,
+            phone: raw.phone ?? null,
+            email: raw.email ?? null,
+            address: raw.address ?? null,
+            city: raw.city ?? data.city ?? null,
+            category: raw.category ?? null,
+            rating: raw.rating ?? null,
+            reviews_count: raw.reviews_count ?? null,
+            website: raw.website ?? null,
+            source,
+            source_url: sourceUrl,
+            raw_json: raw as unknown as never,
+            dedupe_hash: hash,
+          },
+        ]);
         if (!insErr) inserted++;
       }
       return { source, inserted, error: null as string | null };
