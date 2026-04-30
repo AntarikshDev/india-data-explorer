@@ -18,6 +18,7 @@ import { Route as CampaignsIndexRouteImport } from './routes/campaigns.index'
 import { Route as ResultsRunIdRouteImport } from './routes/results.$runId'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns.new'
 import { Route as CampaignsIdRouteImport } from './routes/campaigns.$id'
+import { Route as ApiPublicHooksRunDailyAgentRouteImport } from './routes/api/public/hooks/run-daily-agent'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -64,6 +65,12 @@ const CampaignsIdRoute = CampaignsIdRouteImport.update({
   path: '/campaigns/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksRunDailyAgentRoute =
+  ApiPublicHooksRunDailyAgentRouteImport.update({
+    id: '/api/public/hooks/run-daily-agent',
+    path: '/api/public/hooks/run-daily-agent',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/campaigns/new': typeof CampaignsNewRoute
   '/results/$runId': typeof ResultsRunIdRoute
   '/campaigns/': typeof CampaignsIndexRoute
+  '/api/public/hooks/run-daily-agent': typeof ApiPublicHooksRunDailyAgentRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +94,7 @@ export interface FileRoutesByTo {
   '/campaigns/new': typeof CampaignsNewRoute
   '/results/$runId': typeof ResultsRunIdRoute
   '/campaigns': typeof CampaignsIndexRoute
+  '/api/public/hooks/run-daily-agent': typeof ApiPublicHooksRunDailyAgentRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +107,7 @@ export interface FileRoutesById {
   '/campaigns/new': typeof CampaignsNewRoute
   '/results/$runId': typeof ResultsRunIdRoute
   '/campaigns/': typeof CampaignsIndexRoute
+  '/api/public/hooks/run-daily-agent': typeof ApiPublicHooksRunDailyAgentRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/results/$runId'
     | '/campaigns/'
+    | '/api/public/hooks/run-daily-agent'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +133,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/results/$runId'
     | '/campaigns'
+    | '/api/public/hooks/run-daily-agent'
   id:
     | '__root__'
     | '/'
@@ -133,6 +145,7 @@ export interface FileRouteTypes {
     | '/campaigns/new'
     | '/results/$runId'
     | '/campaigns/'
+    | '/api/public/hooks/run-daily-agent'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,6 +158,7 @@ export interface RootRouteChildren {
   CampaignsNewRoute: typeof CampaignsNewRoute
   ResultsRunIdRoute: typeof ResultsRunIdRoute
   CampaignsIndexRoute: typeof CampaignsIndexRoute
+  ApiPublicHooksRunDailyAgentRoute: typeof ApiPublicHooksRunDailyAgentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -212,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CampaignsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/run-daily-agent': {
+      id: '/api/public/hooks/run-daily-agent'
+      path: '/api/public/hooks/run-daily-agent'
+      fullPath: '/api/public/hooks/run-daily-agent'
+      preLoaderRoute: typeof ApiPublicHooksRunDailyAgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -225,6 +246,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignsNewRoute: CampaignsNewRoute,
   ResultsRunIdRoute: ResultsRunIdRoute,
   CampaignsIndexRoute: CampaignsIndexRoute,
+  ApiPublicHooksRunDailyAgentRoute: ApiPublicHooksRunDailyAgentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
