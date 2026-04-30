@@ -341,7 +341,8 @@ function QueuePage() {
   }, [current, leads, idx, notes, followUpDate, logging, autoMode]);
 
   const remaining = useMemo(() => Math.max(0, leads.length - idx), [leads, idx]);
-  const elapsed = callStart ? Math.floor((now - callStart) / 1000) : 0;
+  const elapsedRef = callEnd ?? now;
+  const elapsed = callStart ? Math.max(0, Math.floor((elapsedRef - callStart) / 1000)) : 0;
   const elapsedStr = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
 
   return (
