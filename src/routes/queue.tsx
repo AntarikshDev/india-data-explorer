@@ -683,8 +683,10 @@ function TodayLog({
   updateCallNotes,
   onClose,
 }: {
-  getTodayCallLog: ReturnType<typeof useServerFn<typeof getTodayCallLog>>;
-  updateCallNotes: ReturnType<typeof useServerFn<typeof updateCallNotes>>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  getTodayCallLog: (args?: any) => Promise<{ rows: AttemptRow[]; error: string | null }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  updateCallNotes: (args?: any) => Promise<{ ok: boolean; error: string | null }>;
   onClose: () => void;
 }) {
   const [rows, setRows] = useState<AttemptRow[]>([]);
