@@ -136,10 +136,13 @@ function QueuePage() {
   const [notes, setNotes] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
 
-  // Call timer
+  // Call timer — runs only while the OS call screen is in foreground (tab hidden on iPhone).
+  // Freezes the moment the user returns to the tab (call ended / cancelled).
   const [callStart, setCallStart] = useState<number | null>(null);
+  const [callEnd, setCallEnd] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const dialedRef = useRef<string | null>(null);
+  const wentHiddenRef = useRef(false);
 
   // Today log + help
   const [showHelp, setShowHelp] = useState(false);
@@ -202,6 +205,8 @@ function QueuePage() {
     setNotes("");
     setFollowUpDate("");
     setCallStart(null);
+    setCallEnd(null);
+    wentHiddenRef.current = false;
   }
 
   useEffect(() => {
@@ -211,12 +216,12 @@ function QueuePage() {
 
   const current = leads[idx];
 
-  // Tick once per second while a call is in progress
+  // Tick once per 0.5s while a call is actively in progress (not yet ended)
   useEffect(() => {
-    if (!callStart) return;
+    if (!callStart || callEnd) return;
     const t = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(t);
-  }, [callStart]);
+  }, [callStart, callEnd]);
 
   // Auto-dial trigger
   useEffect(() => {
@@ -224,33 +229,50 @@ function QueuePage() {
     if (dialedRef.current === current.id) return;
     dialedRef.current = current.id;
     setCallStart(Date.now());
+    setCallEnd(null);
+    wentHiddenRef.current = false;
     window.location.href = `tel:+91${current.phone}`;
-    // Notes opens when user returns (visibility) — see below
   }, [autoMode, current]);
 
-  // iOS visibility: when user returns to the tab (call ended on iPhone),
-  // open notes modal automatically.
+  // iOS visibility: when tab is hidden, the OS call screen is up. When the tab
+  // becomes visible again the call has ended (or the user cancelled). Freeze
+  // the timer at that moment and open the notes modal.
   useEffect(() => {
     function onVis() {
-      if (document.visibilityState !== "visible") return;
       if (!callStart) return;
-      // small debounce so the tab fully settles
+      if (document.visibilityState === "hidden") {
+        wentHiddenRef.current = true;
+        return;
+      }
+      // visible again
+      if (!wentHiddenRef.current) return; // never went to call screen → ignore
+      if (callEnd) return;
+      const ended = Date.now();
+      // If gap was <2s, the call was never actually picked up by OS — treat as 0
+      const dur = ended - callStart;
+      setCallEnd(dur < 2000 ? callStart : ended);
       setTimeout(() => setNotesOpen(true), 250);
     }
     document.addEventListener("visibilitychange", onVis);
     return () => document.removeEventListener("visibilitychange", onVis);
-  }, [callStart]);
+  }, [callStart, callEnd]);
 
   // Auto-advance safety: if a "call" is open >5min without notes, surface modal
+  // and stop the timer (likely the user forgot).
   useEffect(() => {
-    if (!callStart) return;
-    const t = setTimeout(() => setNotesOpen(true), 5 * 60 * 1000);
+    if (!callStart || callEnd) return;
+    const t = setTimeout(() => {
+      setCallEnd(Date.now());
+      setNotesOpen(true);
+    }, 5 * 60 * 1000);
     return () => clearTimeout(t);
-  }, [callStart]);
+  }, [callStart, callEnd]);
 
   function manualDial() {
     if (!current?.phone) return;
     setCallStart(Date.now());
+    setCallEnd(null);
+    wentHiddenRef.current = false;
     window.location.href = `tel:+91${current.phone}`;
   }
 
@@ -261,7 +283,7 @@ function QueuePage() {
       return;
     }
     setLogging(true);
-    const durationSec = callStart ? Math.floor((Date.now() - callStart) / 1000) : 0;
+    const durationSec = callStart ? Math.max(0, Math.floor(((callEnd ?? Date.now()) - callStart) / 1000)) : 0;
     const res = await logFn({
       data: {
         leadId: current.id,
@@ -319,7 +341,8 @@ function QueuePage() {
   }, [current, leads, idx, notes, followUpDate, logging, autoMode]);
 
   const remaining = useMemo(() => Math.max(0, leads.length - idx), [leads, idx]);
-  const elapsed = callStart ? Math.floor((now - callStart) / 1000) : 0;
+  const elapsedRef = callEnd ?? now;
+  const elapsed = callStart ? Math.max(0, Math.floor((elapsedRef - callStart) / 1000)) : 0;
   const elapsedStr = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
 
   return (
@@ -601,10 +624,15 @@ function QueuePage() {
 
       {/* Notes modal */}
       <Dialog open={notesOpen} onOpenChange={setNotesOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-sm p-4 sm:p-6 rounded-lg">
           <DialogHeader>
-            <DialogTitle>
-              Log this call {callStart && <span className="text-xs font-mono text-red-600 ml-2">{elapsedStr}</span>}
+            <DialogTitle className="flex items-center gap-2 pr-6">
+              <span>Log this call</span>
+              {callStart && (
+                <span className={`text-xs font-mono ${callEnd ? "text-muted-foreground" : "text-red-600"}`}>
+                  {callEnd ? "" : "● "}{elapsedStr}
+                </span>
+              )}
             </DialogTitle>
             <DialogDescription className="truncate">
               {current?.name ?? "Lead"} · {current?.phone ? `••• ${current.phone.slice(-4)}` : ""}
@@ -612,6 +640,15 @@ function QueuePage() {
           </DialogHeader>
 
           <div className="space-y-3">
+            {callStart && !callEnd && (
+              <button
+                type="button"
+                onClick={() => setCallEnd(Date.now())}
+                className="w-full text-xs text-muted-foreground hover:text-foreground border border-dashed rounded-md py-1.5"
+              >
+                Stop timer (call already ended)
+              </button>
+            )}
             <div className="space-y-1.5">
               <Label htmlFor="notes" className="text-xs">Notes</Label>
               <Textarea
@@ -632,9 +669,10 @@ function QueuePage() {
                 type="datetime-local"
                 value={followUpDate}
                 onChange={(e) => setFollowUpDate(e.target.value)}
+                className="w-full"
               />
             </div>
-            <div className="grid grid-cols-3 gap-1.5 pt-1">
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
               {OUTCOMES.map((o) => {
                 const Icon = o.icon;
                 return (
@@ -642,9 +680,9 @@ function QueuePage() {
                     key={o.key}
                     onClick={() => submitOutcome(o.key)}
                     disabled={logging}
-                    className={`flex items-center justify-center gap-1 rounded-md border h-9 text-xs font-medium transition disabled:opacity-50 ${toneClass[o.tone]}`}
+                    className={`flex items-center justify-center gap-1 rounded-md border h-10 text-xs font-medium transition disabled:opacity-50 ${toneClass[o.tone]}`}
                   >
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{o.label}</span>
                   </button>
                 );
@@ -652,7 +690,7 @@ function QueuePage() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-2">
+          <DialogFooter className="flex-row justify-between items-center gap-2 sm:gap-2">
             <Button
               variant="ghost"
               size="sm"
