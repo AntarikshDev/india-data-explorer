@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as QueueRouteImport } from './routes/queue'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -18,6 +19,11 @@ import { Route as ResultsRunIdRouteImport } from './routes/results.$runId'
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QueueRoute = QueueRouteImport.update({
+  id: '/queue',
+  path: '/queue',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryRoute = HistoryRouteImport.update({
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
+  '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/results/$runId': typeof ResultsRunIdRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
+  '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/results/$runId': typeof ResultsRunIdRoute
 }
@@ -60,21 +68,36 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/history': typeof HistoryRoute
+  '/queue': typeof QueueRoute
   '/settings': typeof SettingsRoute
   '/results/$runId': typeof ResultsRunIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/history' | '/settings' | '/results/$runId'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/history'
+    | '/queue'
+    | '/settings'
+    | '/results/$runId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/history' | '/settings' | '/results/$runId'
-  id: '__root__' | '/' | '/auth' | '/history' | '/settings' | '/results/$runId'
+  to: '/' | '/auth' | '/history' | '/queue' | '/settings' | '/results/$runId'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/history'
+    | '/queue'
+    | '/settings'
+    | '/results/$runId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   HistoryRoute: typeof HistoryRoute
+  QueueRoute: typeof QueueRoute
   SettingsRoute: typeof SettingsRoute
   ResultsRunIdRoute: typeof ResultsRunIdRoute
 }
@@ -86,6 +109,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/queue': {
+      id: '/queue'
+      path: '/queue'
+      fullPath: '/queue'
+      preLoaderRoute: typeof QueueRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/history': {
@@ -123,6 +153,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   HistoryRoute: HistoryRoute,
+  QueueRoute: QueueRoute,
   SettingsRoute: SettingsRoute,
   ResultsRunIdRoute: ResultsRunIdRoute,
 }
