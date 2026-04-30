@@ -123,6 +123,7 @@ function QueuePage() {
   const todayFn = useServerFn(getTodayCallLog);
   const updateNotesFn = useServerFn(updateCallNotes);
   const listSetsFn = useServerFn(listLeadSets);
+  const isMobile = useIsMobile();
 
   // Filters
   const [stateCode, setStateCode] = useState<string>("");
