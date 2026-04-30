@@ -675,7 +675,7 @@ interface AttemptRow {
   outcome: string;
   notes: string | null;
   created_at: string;
-  leads?: { name: string | null; phone: string | null } | null;
+  lead?: { name: string | null; phone: string | null } | null;
 }
 
 function TodayLog({

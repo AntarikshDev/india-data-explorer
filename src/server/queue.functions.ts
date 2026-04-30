@@ -122,13 +122,28 @@ export const getTodayCallLog = createServerFn({ method: "GET" })
     startOfDay.setHours(0, 0, 0, 0);
     const { data: rows, error } = await supabase
       .from("call_attempts")
-      .select("*, leads:lead_id(name, phone, city, district_name, state_code)")
+      .select("*")
       .eq("user_id", userId)
       .gte("created_at", startOfDay.toISOString())
       .order("created_at", { ascending: false })
       .limit(data.limit);
     if (error) return { rows: [], error: error.message };
-    return { rows: rows ?? [], error: null as string | null };
+    const ids = Array.from(new Set((rows ?? []).map((r) => r.lead_id)));
+    const { data: leadRows } = ids.length
+      ? await supabase
+          .from("leads")
+          .select("id,name,phone")
+          .in("id", ids)
+      : { data: [] as Array<{ id: string; name: string | null; phone: string | null }> };
+    const byId = new Map((leadRows ?? []).map((l) => [l.id, l]));
+    const enriched = (rows ?? []).map((r) => ({
+      id: r.id,
+      outcome: r.outcome,
+      notes: r.notes,
+      created_at: r.created_at,
+      lead: byId.get(r.lead_id) ?? null,
+    }));
+    return { rows: enriched, error: null as string | null };
   });
 
 export const updateCallNotes = createServerFn({ method: "POST" })
