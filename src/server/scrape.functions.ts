@@ -142,6 +142,14 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
           continue;
         }
         const hash = dedupeHash(source, raw.name, validPhone);
+        // GLOBAL DEDUP: skip silently if this lead already exists in this
+        // user's database (any prior run, or earlier in this same run).
+        if (seenHashes.has(hash)) {
+          skippedDuplicate++;
+          continue;
+        }
+        seenHashes.add(hash);
+
         const website = raw.business_website ?? null;
         const listing = raw.listing_url ?? null;
         const { score, reasons } = scoreLead(
@@ -183,10 +191,16 @@ export const executeScrapeRun = createServerFn({ method: "POST" })
           if (inserted % 3 === 0) {
             await setSourceProgress(source, { status: "running", inserted });
           }
+        } else {
+          // Unique-constraint collisions across concurrent inserts: also dedup
+          if (/duplicate|unique/i.test(insErr.message)) skippedDuplicate++;
         }
       }
       if (rejectedNoPhone > 0) {
         console.log(`[${source}] dropped ${rejectedNoPhone} leads with invalid/junk phone`);
+      }
+      if (skippedDuplicate > 0) {
+        console.log(`[${source}] skipped ${skippedDuplicate} leads already in database`);
       }
 
       await setSourceProgress(source, {
