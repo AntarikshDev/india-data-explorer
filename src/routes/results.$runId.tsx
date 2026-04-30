@@ -41,7 +41,7 @@ function ResultsPage() {
   async function load() {
     const [{ data: r }, { data: l }] = await Promise.all([
       supabase.from("scrape_runs").select("*").eq("id", runId).maybeSingle(),
-      supabase.from("leads").select("*").eq("run_id", runId).order("scraped_at", { ascending: true }),
+      supabase.from("leads").select("*").eq("run_id", runId).order("score", { ascending: false }).order("scraped_at", { ascending: true }),
     ]);
     setRun((r as ScrapeRun | null) ?? null);
     setLeads((l ?? []) as Lead[]);
