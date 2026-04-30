@@ -170,6 +170,7 @@ function ResultsPage() {
                 <th className="p-2 w-10">
                   <Checkbox checked={selected.size > 0 && selected.size === filtered.length} onCheckedChange={toggleAll} />
                 </th>
+                <th className="p-2 w-14">Score</th>
                 <th className="p-2">Name</th>
                 <th className="p-2">Phone</th>
                 <th className="p-2">Address</th>
@@ -184,6 +185,15 @@ function ResultsPage() {
                 <tr key={l.id} className="border-t hover:bg-accent/30">
                   <td className="p-2">
                     <Checkbox checked={selected.has(l.id)} onCheckedChange={() => toggle(l.id)} />
+                  </td>
+                  <td className="p-2">
+                    <Badge
+                      variant={l.score >= 60 ? "default" : l.score >= 30 ? "secondary" : "outline"}
+                      className="tabular-nums"
+                      title={l.score_reasons ? Object.entries(l.score_reasons).map(([k, v]) => `${k}: +${v}`).join("\n") : undefined}
+                    >
+                      {l.score}
+                    </Badge>
                   </td>
                   <td className="p-2 font-medium">
                     {l.name ?? "—"}
@@ -205,7 +215,7 @@ function ResultsPage() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-muted-foreground">No leads.</td>
+                  <td colSpan={9} className="p-8 text-center text-muted-foreground">No leads.</td>
                 </tr>
               )}
             </tbody>
