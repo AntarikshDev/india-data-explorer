@@ -305,19 +305,20 @@ export const runCampaignOnce = createServerFn({ method: "POST" })
       return { ok: false, error: runRes.error ?? "Scrape start failed" };
     }
 
+    const runId: string = runRes.runId;
     await supabase
       .from("campaign_targets")
-      .update({ scrape_run_id: runRes.runId })
+      .update({ scrape_run_id: runId })
       .eq("id", target.id);
 
     // Fire-and-forget the scrape (UI polls)
-    executeScrapeRun({ data: { runId: runRes.runId } })
+    executeScrapeRun({ data: { runId } })
       .then(async (res) => {
         // After scrape completes, count inserted leads and finalize
         const { count } = await supabase
           .from("leads")
           .select("*", { count: "exact", head: true })
-          .eq("run_id", runRes.runId)
+          .eq("run_id", runId)
           .eq("user_id", userId);
         await supabase
           .from("campaign_targets")
