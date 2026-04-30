@@ -13,17 +13,23 @@ export interface Lead {
   name: string | null;
   phone: string | null;
   email: string | null;
+  email_enriched: string | null;
+  whatsapp: string | null;
+  owner_name: string | null;
   address: string | null;
   city: string | null;
   category: string | null;
   rating: number | null;
   reviews_count: number | null;
   website: string | null;
+  listing_url: string | null;
   source: Source;
   source_url: string | null;
   raw_json: unknown;
   dedupe_hash: string;
   pushed_to_crm_at: string | null;
+  score: number;
+  score_reasons: Record<string, number> | null;
   scraped_at: string;
 }
 
