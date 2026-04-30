@@ -1,10 +1,11 @@
-// Public webhook called by pg_cron once per day. Walks every active campaign
-// for every user and runs one target each (the per-campaign daily cap inside
-// runCampaignOnce will prevent over-running in case cron fires multiple times).
+// Public webhook called by pg_cron once per day.
+// For each active+scheduled campaign, picks the next district and runs ONE
+// scrape — repeats up to the campaign's daily cap.
 //
 // Auth: shared secret in `x-cron-secret` header. Set CRON_SECRET in env.
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { performScrapeRun } from "@/server/scrape-core.server";
 
 export const Route = createFileRoute("/api/public/hooks/run-daily-agent")({
   server: {
@@ -16,10 +17,9 @@ export const Route = createFileRoute("/api/public/hooks/run-daily-agent")({
           return new Response("Unauthorized", { status: 401 });
         }
 
-        // Pull every active campaign across all users
         const { data: campaigns, error } = await supabaseAdmin
           .from("campaigns")
-          .select("id, user_id, name, daily_target_cap")
+          .select("*")
           .eq("status", "active")
           .eq("schedule_enabled", true);
 
@@ -31,37 +31,25 @@ export const Route = createFileRoute("/api/public/hooks/run-daily-agent")({
         const results: Array<{ id: string; name: string; runs: number; error?: string }> = [];
 
         for (const c of campaigns ?? []) {
-          // For each campaign, fire up to daily_target_cap runs
-          const cap = Math.min(c.daily_target_cap ?? 5, 10); // hard cap of 10 per cron tick
+          const cap = Math.min(c.daily_target_cap ?? 5, 10);
           const todayStart = new Date();
           todayStart.setHours(0, 0, 0, 0);
-
           const { count: alreadyRanToday } = await supabaseAdmin
             .from("campaign_targets")
             .select("*", { count: "exact", head: true })
             .eq("campaign_id", c.id)
             .gte("ran_at", todayStart.toISOString());
-
           const remaining = Math.max(0, cap - (alreadyRanToday ?? 0));
           let ranThisInvocation = 0;
 
           for (let i = 0; i < remaining; i++) {
-            // Call our own server fn endpoint internally. We can't easily auth as a
-            // user from inside cron, so we replicate the planner logic with admin
-            // privileges by directly invoking the route URL with a service header.
-            // Simpler: just record a queued target row and let a follow-up worker
-            // process it. For v1, do an HTTP self-call to /api/public/hooks/run-target
-            const res = await runOneCampaignTarget(c.id, c.user_id);
-            if (!res.ok) {
-              results.push({ id: c.id, name: c.name, runs: ranThisInvocation, error: res.error });
+            const r = await runOneCampaignTarget(c);
+            if (!r.ok) {
+              results.push({ id: c.id, name: c.name, runs: ranThisInvocation, error: r.error });
               break;
             }
             ranThisInvocation++;
             triggered++;
-            // Don't hammer — small gap between targets
-            await new Promise((r) => setTimeout(r, 500));
-            // If state coverage hit, stop early
-            if (res.stateCovered) break;
           }
           if (ranThisInvocation > 0) {
             results.push({ id: c.id, name: c.name, runs: ranThisInvocation });
@@ -79,33 +67,25 @@ export const Route = createFileRoute("/api/public/hooks/run-daily-agent")({
   },
 });
 
-// Runs ONE target for the given campaign as the campaign's owning user.
-// This duplicates the planner used by runCampaignOnce but uses supabaseAdmin
-// so it works without a logged-in session (cron context).
-async function runOneCampaignTarget(
-  campaignId: string,
-  userId: string,
-): Promise<{ ok: boolean; error?: string; stateCovered?: boolean }> {
-  const { data: c } = await supabaseAdmin
-    .from("campaigns")
-    .select("*")
-    .eq("id", campaignId)
-    .single();
-  if (!c) return { ok: false, error: "Campaign not found" };
-
+async function runOneCampaignTarget(c: any): Promise<{ ok: boolean; error?: string }> {
+  const userId = c.user_id;
   const stateCode = c.current_state_code ?? c.start_state_code;
 
-  // Coverage check
   const [{ data: districts }, { data: prevTargets }] = await Promise.all([
-    supabaseAdmin.from("geo_districts").select("id, name, hq_lat, hq_lng").eq("state_code", stateCode),
+    supabaseAdmin
+      .from("geo_districts")
+      .select("id, name, hq_lat, hq_lng")
+      .eq("state_code", stateCode),
     supabaseAdmin
       .from("campaign_targets")
       .select("district_id, leads_inserted")
-      .eq("campaign_id", campaignId),
+      .eq("campaign_id", c.id),
   ]);
+
   const total = (districts ?? []).length;
   const touched = new Set((prevTargets ?? []).map((t) => t.district_id).filter(Boolean));
   const pct = total ? Math.round((touched.size / total) * 100) : 0;
+
   if (pct >= c.state_coverage_threshold) {
     await supabaseAdmin.from("campaigns").update({ status: "awaiting_next_state" }).eq("id", c.id);
     await supabaseAdmin.from("notifications").insert({
@@ -115,10 +95,10 @@ async function runOneCampaignTarget(
       body: `Campaign "${c.name}" hit your ${c.state_coverage_threshold}% coverage threshold. Pick the next state.`,
       payload: { campaignId: c.id, coverage: { covered: touched.size, total, pct } },
     });
-    return { ok: false, error: "STATE_COVERED", stateCovered: true };
+    return { ok: false, error: "STATE_COVERED" };
   }
 
-  // Pick next district by run count + un-touched-first
+  // Pick next: un-touched districts first, ignore exhausted
   const counts = new Map<string, { runs: number; lowYieldStreak: number }>();
   for (const t of prevTargets ?? []) {
     if (!t.district_id) continue;
@@ -137,12 +117,7 @@ async function runOneCampaignTarget(
     await supabaseAdmin.from("campaigns").update({ status: "awaiting_next_state" }).eq("id", c.id);
     return { ok: false, error: "All districts exhausted" };
   }
-  // Prefer un-touched
-  candidates.sort((a, b) => {
-    const aTouched = counts.has(a.id) ? 1 : 0;
-    const bTouched = counts.has(b.id) ? 1 : 0;
-    return aTouched - bTouched;
-  });
+  candidates.sort((a, b) => (counts.has(a.id) ? 1 : 0) - (counts.has(b.id) ? 1 : 0));
   const next = candidates[0];
 
   // Insert target row
@@ -161,7 +136,7 @@ async function runOneCampaignTarget(
     .single();
   if (!target) return { ok: false, error: "Target insert failed" };
 
-  // Create scrape run
+  // Create scrape_runs row
   const initialProgress: Record<string, { status: string; inserted: number }> = {};
   for (const s of c.sources as string[]) {
     initialProgress[s] = { status: "pending", inserted: 0 };
@@ -188,20 +163,34 @@ async function runOneCampaignTarget(
     .update({ scrape_run_id: run.id })
     .eq("id", target.id);
 
-  // Trigger the actual scrape via internal HTTP (server fn). We hit our own
-  // /api/public/hooks/execute-cron-run endpoint to keep credentials server-side.
-  const baseUrl =
-    process.env.PUBLIC_BASE_URL ??
-    "https://project--9c789170-636a-4368-b1ab-15e511bfead6.lovable.app";
-  // Fire-and-forget: don't await — cron should return fast
-  fetch(`${baseUrl}/api/public/hooks/execute-cron-run`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-cron-secret": process.env.CRON_SECRET ?? "",
-    },
-    body: JSON.stringify({ runId: run.id, userId, targetId: target.id, campaignId: c.id, districtId: next.id }),
-  }).catch(() => {});
+  // Run the scrape synchronously (cron handler can be slow). Cron infra
+  // typically allows 60-120s; one scrape takes ~30-60s.
+  const result = await performScrapeRun({
+    supabase: supabaseAdmin,
+    userId,
+    runId: run.id,
+  });
+
+  // Count actual leads inserted for this target
+  const { count } = await supabaseAdmin
+    .from("leads")
+    .select("*", { count: "exact", head: true })
+    .eq("run_id", run.id)
+    .eq("user_id", userId);
+  await supabaseAdmin
+    .from("campaign_targets")
+    .update({
+      status: result.ok ? "done" : "failed",
+      leads_inserted: count ?? 0,
+    })
+    .eq("id", target.id);
+  await supabaseAdmin
+    .from("campaigns")
+    .update({
+      current_district_id: next.id,
+      last_run_at: new Date().toISOString(),
+    })
+    .eq("id", c.id);
 
   return { ok: true };
 }
