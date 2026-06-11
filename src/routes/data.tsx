@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
@@ -20,11 +20,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { listLeads, updateLead, importLeadsCsv } from "@/server/leads.functions";
+import { listLeads, listCampaignsWithLeadStats, updateLead, importLeadsCsv } from "@/server/leads.functions";
+import { listLeadSets } from "@/server/leadsets.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { SOURCE_LABELS, type Lead } from "@/lib/leadTypes";
 import { toast } from "sonner";
-import { Pencil, Upload, Download, Search, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { Pencil, Upload, Download, Search, ChevronRight, SlidersHorizontal, X, Megaphone } from "lucide-react";
 
 export const Route = createFileRoute("/data")({
   component: () => (
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/data")({
   head: () => ({
     meta: [
       { title: "Data Centre — EdSetu Lead Scraper" },
-      { name: "description", content: "All scraped leads with filters, edit, and CSV import." },
+      { name: "description", content: "All scraped leads with campaign, set, and location filters." },
     ],
   }),
 });
@@ -43,6 +44,23 @@ export const Route = createFileRoute("/data")({
 interface GeoState { code: string; name: string }
 interface GeoDistrict { id: string; state_code: string; name: string }
 interface GeoLocality { id: string; district_id: string; name: string }
+interface CampaignStat {
+  id: string;
+  name: string;
+  status: string;
+  created_at: string;
+  last_run_at: string | null;
+  lead_count: number;
+  inserted_total: number;
+}
+interface LeadSet {
+  id: string;
+  name: string;
+  state_code: string | null;
+  district_name: string | null;
+  locality_name: string | null;
+  category_query: string | null;
+}
 
 const PAGE = 100;
 
@@ -50,12 +68,16 @@ function DataCentrePage() {
   const listFn = useServerFn(listLeads);
   const updateFn = useServerFn(updateLead);
   const importFn = useServerFn(importLeadsCsv);
+  const listCampaignStatsFn = useServerFn(listCampaignsWithLeadStats);
+  const listLeadSetsFn = useServerFn(listLeadSets);
 
   const [q, setQ] = useState("");
   const [stateCode, setStateCode] = useState("");
   const [districtId, setDistrictId] = useState("");
   const [localityId, setLocalityId] = useState("");
   const [source, setSource] = useState<"" | "gmaps" | "justdial">("");
+  const [campaignId, setCampaignId] = useState("");
+  const [leadSetId, setLeadSetId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [offset, setOffset] = useState(0);
@@ -67,13 +89,18 @@ function DataCentrePage() {
   const [states, setStates] = useState<GeoState[]>([]);
   const [districts, setDistricts] = useState<GeoDistrict[]>([]);
   const [localities, setLocalities] = useState<GeoLocality[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignStat[]>([]);
+  const [leadSets, setLeadSets] = useState<LeadSet[]>([]);
 
   const [editing, setEditing] = useState<Lead | null>(null);
+  const [exportingCampaign, setExportingCampaign] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     supabase.from("geo_states").select("*").order("name").then(({ data }) => setStates((data ?? []) as GeoState[]));
-  }, []);
+    listCampaignStatsFn({}).then((r) => setCampaigns((r.campaigns ?? []) as CampaignStat[]));
+    listLeadSetsFn({}).then((r) => setLeadSets((r.sets ?? []) as LeadSet[]));
+  }, [listCampaignStatsFn, listLeadSetsFn]);
   useEffect(() => {
     if (!stateCode) return setDistricts([]);
     supabase.from("geo_districts").select("*").eq("state_code", stateCode).order("name")
@@ -85,7 +112,7 @@ function DataCentrePage() {
       .then(({ data }) => setLocalities((data ?? []) as GeoLocality[]));
   }, [districtId]);
 
-  async function load(o = offset) {
+  const load = useCallback(async (o: number) => {
     setLoading(true);
     const r = await listFn({
       data: {
@@ -94,6 +121,8 @@ function DataCentrePage() {
         districtId: districtId || null,
         localityId: localityId || null,
         source: source || null,
+        campaignId: campaignId || null,
+        leadSetId: leadSetId || null,
         from: from ? new Date(from).toISOString() : null,
         to: to ? new Date(to).toISOString() : null,
         limit: PAGE,
@@ -103,19 +132,26 @@ function DataCentrePage() {
     setRows((r.rows ?? []) as Lead[]);
     setTotal(r.count ?? 0);
     setLoading(false);
-  }
+  }, [listFn, q, stateCode, districtId, localityId, source, campaignId, leadSetId, from, to]);
+
+  // Auto-apply when filters (other than q/dates) change
+  useEffect(() => {
+    setOffset(0);
+    load(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateCode, districtId, localityId, source, campaignId, leadSetId]);
+
+  // Initial load
   useEffect(() => {
     load(0);
-    setOffset(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function exportCsv() {
-    if (rows.length === 0) return;
+  function buildCsv(data: Lead[]) {
     const headers = ["name", "phone", "email", "category", "city", "state_code", "district_name", "locality_name", "score", "source", "scraped_at"];
-    const csv = [
+    return [
       headers.join(","),
-      ...rows.map((r) =>
+      ...data.map((r) =>
         headers
           .map((h) => {
             const v = (r as unknown as Record<string, unknown>)[h];
@@ -125,13 +161,57 @@ function DataCentrePage() {
           .join(","),
       ),
     ].join("\n");
+  }
+
+  function downloadCsv(filename: string, csv: string) {
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function exportCurrentFilter() {
+    const r = await listFn({
+      data: {
+        q: q || null,
+        stateCode: stateCode || null,
+        districtId: districtId || null,
+        localityId: localityId || null,
+        source: source || null,
+        campaignId: campaignId || null,
+        leadSetId: leadSetId || null,
+        from: from ? new Date(from).toISOString() : null,
+        to: to ? new Date(to).toISOString() : null,
+        limit: 5000,
+        offset: 0,
+      },
+    });
+    const data = (r.rows ?? []) as Lead[];
+    if (!data.length) {
+      toast.error("No rows to export");
+      return;
+    }
+    downloadCsv(`leads-${new Date().toISOString().slice(0, 10)}.csv`, buildCsv(data));
+  }
+
+  async function exportCampaign(c: CampaignStat) {
+    setExportingCampaign(c.id);
+    try {
+      const r = await listFn({ data: { campaignId: c.id, limit: 5000, offset: 0 } });
+      const data = (r.rows ?? []) as Lead[];
+      if (!data.length) {
+        toast.error("No leads in this campaign");
+        return;
+      }
+      const safe = c.name.replace(/[^a-z0-9-_]+/gi, "_").slice(0, 60);
+      downloadCsv(`campaign-${safe}-${new Date().toISOString().slice(0, 10)}.csv`, buildCsv(data));
+      toast.success(`Exported ${data.length} leads`);
+    } finally {
+      setExportingCampaign(null);
+    }
   }
 
   async function handleCsvUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -182,11 +262,26 @@ function DataCentrePage() {
   const pages = useMemo(() => Math.ceil(total / PAGE), [total]);
   const page = Math.floor(offset / PAGE) + 1;
 
+  const activeCampaign = campaigns.find((c) => c.id === campaignId);
+  const activeSet = leadSets.find((s) => s.id === leadSetId);
+
+  function clearAllFilters() {
+    setQ("");
+    setStateCode("");
+    setDistrictId("");
+    setLocalityId("");
+    setSource("");
+    setCampaignId("");
+    setLeadSetId("");
+    setFrom("");
+    setTo("");
+  }
+
   const [filtersOpen, setFiltersOpen] = useState(false);
   const filterControls = (
-    <>
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-7 gap-2">
-        <div className="lg:col-span-2 relative">
+    <div className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+        <div className="relative sm:col-span-2">
           <Search className="h-3.5 w-3.5 absolute left-2 top-2.5 text-muted-foreground" />
           <Input
             className="h-9 text-xs pl-7"
@@ -196,6 +291,24 @@ function DataCentrePage() {
             onKeyDown={(e) => e.key === "Enter" && load(0)}
           />
         </div>
+        <Select value={campaignId || "__any__"} onValueChange={(v) => setCampaignId(v === "__any__" ? "" : v)}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Campaign" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__any__">All campaigns</SelectItem>
+            {campaigns.map((c) => (
+              <SelectItem key={c.id} value={c.id}>{c.name} · {c.lead_count}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={leadSetId || "__any__"} onValueChange={(v) => setLeadSetId(v === "__any__" ? "" : v)}>
+          <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Lead set" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__any__">All sets</SelectItem>
+            {leadSets.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Select value={stateCode || "__any__"} onValueChange={(v) => { setStateCode(v === "__any__" ? "" : v); setDistrictId(""); setLocalityId(""); }}>
           <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="State" /></SelectTrigger>
           <SelectContent>
@@ -225,9 +338,8 @@ function DataCentrePage() {
             <SelectItem value="justdial">JustDial</SelectItem>
           </SelectContent>
         </Select>
-        <Button size="sm" className="h-9 text-xs" onClick={() => { setOffset(0); load(0); setFiltersOpen(false); }}>Apply</Button>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div>
           <Label className="text-[10px]">Scraped from</Label>
           <Input type="date" className="h-9 text-xs" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -236,8 +348,9 @@ function DataCentrePage() {
           <Label className="text-[10px]">Scraped to</Label>
           <Input type="date" className="h-9 text-xs" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
+        <Button size="sm" className="h-9 text-xs sm:col-start-4" onClick={() => { setOffset(0); load(0); setFiltersOpen(false); }}>Apply</Button>
       </div>
-    </>
+    </div>
   );
 
   return (
@@ -252,11 +365,95 @@ function DataCentrePage() {
           <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} className="h-9">
             <Upload className="h-3.5 w-3.5 sm:mr-1" /> <span className="hidden sm:inline">Import</span>
           </Button>
-          <Button size="sm" variant="outline" onClick={exportCsv} disabled={rows.length === 0} className="h-9">
+          <Button size="sm" variant="outline" onClick={exportCurrentFilter} disabled={total === 0} className="h-9">
             <Download className="h-3.5 w-3.5 sm:mr-1" /> <span className="hidden sm:inline">Export</span>
           </Button>
         </div>
       </div>
+
+      {/* Campaign sections */}
+      {campaigns.length > 0 && (
+        <Card className="p-3">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+              <Megaphone className="h-3.5 w-3.5" /> Campaign-wise data
+            </h2>
+            {campaignId && (
+              <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setCampaignId("")}>
+                Show all <X className="h-3 w-3 ml-1" />
+              </Button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {campaigns.map((c) => {
+              const active = c.id === campaignId;
+              return (
+                <div
+                  key={c.id}
+                  className={`rounded-lg border p-2.5 text-xs transition-colors ${
+                    active ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <button
+                      className="text-left min-w-0 flex-1"
+                      onClick={() => setCampaignId(active ? "" : c.id)}
+                    >
+                      <div className="font-medium truncate text-sm">{c.name}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        <Badge variant="secondary" className="h-4 px-1.5 text-[10px] mr-1">{c.lead_count} leads</Badge>
+                        <span className="capitalize">{c.status}</span>
+                      </div>
+                    </button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7 shrink-0"
+                      disabled={exportingCampaign === c.id || c.lead_count === 0}
+                      title="Export campaign CSV"
+                      onClick={() => exportCampaign(c)}
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      )}
+
+      {/* Active filter chips */}
+      {(activeCampaign || activeSet || stateCode || districtId || localityId || source) && (
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+          <span className="text-muted-foreground">Filtering:</span>
+          {activeCampaign && (
+            <Badge variant="secondary" className="gap-1">
+              Campaign: {activeCampaign.name}
+              <button onClick={() => setCampaignId("")}><X className="h-3 w-3" /></button>
+            </Badge>
+          )}
+          {activeSet && (
+            <Badge variant="secondary" className="gap-1">
+              Set: {activeSet.name}
+              <button onClick={() => setLeadSetId("")}><X className="h-3 w-3" /></button>
+            </Badge>
+          )}
+          {stateCode && (
+            <Badge variant="secondary" className="gap-1">
+              {states.find((s) => s.code === stateCode)?.name ?? stateCode}
+              <button onClick={() => { setStateCode(""); setDistrictId(""); setLocalityId(""); }}><X className="h-3 w-3" /></button>
+            </Badge>
+          )}
+          {source && (
+            <Badge variant="secondary" className="gap-1">
+              {SOURCE_LABELS[source as "gmaps" | "justdial"]}
+              <button onClick={() => setSource("")}><X className="h-3 w-3" /></button>
+            </Badge>
+          )}
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={clearAllFilters}>Clear all</Button>
+        </div>
+      )}
 
       {/* Mobile: search + filter trigger */}
       <div className="md:hidden flex items-center gap-2">
@@ -278,14 +475,13 @@ function DataCentrePage() {
             <DrawerHeader>
               <DrawerTitle>Filters</DrawerTitle>
             </DrawerHeader>
-            <div className="px-4 pb-6 space-y-2">{filterControls}</div>
+            <div className="px-4 pb-6">{filterControls}</div>
           </DrawerContent>
         </Drawer>
       </div>
 
       {/* Desktop: full filter card */}
       <Card className="p-3 hidden md:block">{filterControls}</Card>
-
 
       {/* Mobile card list */}
       <div className="md:hidden space-y-2">
@@ -381,7 +577,7 @@ function DataCentrePage() {
         </div>
       )}
 
-      {editing && <EditDialog lead={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); }} updateFn={updateFn} />}
+      {editing && <EditDialog lead={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(offset); }} updateFn={updateFn} />}
     </div>
   );
 }
