@@ -35,15 +35,57 @@ export const listLeads = createServerFn({ method: "POST" })
         localityId: z.string().uuid().optional().nullable(),
         source: z.enum(["gmaps", "justdial"]).optional().nullable(),
         minScore: z.number().int().min(0).max(100).optional().nullable(),
+        campaignId: z.string().uuid().optional().nullable(),
+        leadSetId: z.string().uuid().optional().nullable(),
         from: z.string().datetime().optional().nullable(),
         to: z.string().datetime().optional().nullable(),
-        limit: z.number().int().min(1).max(500).default(100),
+        limit: z.number().int().min(1).max(5000).default(100),
         offset: z.number().int().min(0).default(0),
       })
       .parse(input ?? {}),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    let setStateCode = data.stateCode ?? null;
+    let setDistrictId = data.districtId ?? null;
+    let setLocalityId = data.localityId ?? null;
+    let setMinScore = data.minScore ?? null;
+    let setCategory: string | null = null;
+    let setName: string | null = null;
+    if (data.leadSetId) {
+      const { data: set } = await supabase
+        .from("lead_sets")
+        .select("*")
+        .eq("id", data.leadSetId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (set) {
+        setStateCode = setStateCode ?? set.state_code ?? null;
+        setDistrictId = setDistrictId ?? set.district_id ?? null;
+        setLocalityId = setLocalityId ?? set.locality_id ?? null;
+        setMinScore = setMinScore ?? set.min_score ?? null;
+        setCategory = set.category_query ?? null;
+        setName = set.name_query ?? null;
+      }
+    }
+
+    let runIds: string[] | null = null;
+    if (data.campaignId) {
+      const { data: tgts } = await supabase
+        .from("campaign_targets")
+        .select("scrape_run_id")
+        .eq("user_id", userId)
+        .eq("campaign_id", data.campaignId)
+        .not("scrape_run_id", "is", null);
+      runIds = Array.from(
+        new Set((tgts ?? []).map((t) => t.scrape_run_id).filter(Boolean) as string[]),
+      );
+      if (runIds.length === 0) {
+        return { rows: [], count: 0, error: null as string | null };
+      }
+    }
+
     let q = supabase
       .from("leads")
       .select("*", { count: "exact" })
@@ -52,11 +94,14 @@ export const listLeads = createServerFn({ method: "POST" })
       const term = `%${data.q}%`;
       q = q.or(`name.ilike.${term},phone.ilike.${term},city.ilike.${term},category.ilike.${term}`);
     }
-    if (data.stateCode) q = q.eq("state_code", data.stateCode);
-    if (data.districtId) q = q.eq("district_id", data.districtId);
-    if (data.localityId) q = q.eq("locality_id", data.localityId);
+    if (setStateCode) q = q.eq("state_code", setStateCode);
+    if (setDistrictId) q = q.eq("district_id", setDistrictId);
+    if (setLocalityId) q = q.eq("locality_id", setLocalityId);
     if (data.source) q = q.eq("source", data.source);
-    if (typeof data.minScore === "number") q = q.gte("score", data.minScore);
+    if (typeof setMinScore === "number") q = q.gte("score", setMinScore);
+    if (setCategory) q = q.ilike("category", `%${setCategory}%`);
+    if (setName) q = q.ilike("name", `%${setName}%`);
+    if (runIds) q = q.in("run_id", runIds);
     if (data.from) q = q.gte("scraped_at", data.from);
     if (data.to) q = q.lte("scraped_at", data.to);
 
@@ -65,6 +110,57 @@ export const listLeads = createServerFn({ method: "POST" })
       .range(data.offset, data.offset + data.limit - 1);
     if (error) return { rows: [], count: 0, error: error.message };
     return { rows: rows ?? [], count: count ?? 0, error: null as string | null };
+  });
+
+export const listCampaignsWithLeadStats = createServerFn({ method: "GET" })
+  .middleware([attachSupabaseAuth, requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { data: campaigns, error } = await supabase
+      .from("campaigns")
+      .select("id,name,status,created_at,last_run_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) return { campaigns: [], error: error.message };
+
+    const { data: targets } = await supabase
+      .from("campaign_targets")
+      .select("campaign_id,scrape_run_id,leads_inserted")
+      .eq("user_id", userId);
+
+    const byCampaign = new Map<string, { runIds: Set<string>; inserted: number }>();
+    for (const t of targets ?? []) {
+      const entry = byCampaign.get(t.campaign_id) ?? { runIds: new Set<string>(), inserted: 0 };
+      if (t.scrape_run_id) entry.runIds.add(t.scrape_run_id);
+      entry.inserted += t.leads_inserted ?? 0;
+      byCampaign.set(t.campaign_id, entry);
+    }
+
+    const enriched = await Promise.all(
+      (campaigns ?? []).map(async (c) => {
+        const entry = byCampaign.get(c.id);
+        const runIds = entry ? Array.from(entry.runIds) : [];
+        let leadCount = 0;
+        if (runIds.length > 0) {
+          const { count } = await supabase
+            .from("leads")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .in("run_id", runIds);
+          leadCount = count ?? 0;
+        }
+        return {
+          id: c.id,
+          name: c.name,
+          status: c.status,
+          created_at: c.created_at,
+          last_run_at: c.last_run_at,
+          lead_count: leadCount,
+          inserted_total: entry?.inserted ?? 0,
+        };
+      }),
+    );
+    return { campaigns: enriched, error: null as string | null };
   });
 
 export const updateLead = createServerFn({ method: "POST" })
@@ -156,7 +252,6 @@ export const importLeadsCsv = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Create a synthetic scrape_run so leads have a run_id
     const { data: run, error: runErr } = await supabase
       .from("scrape_runs")
       .insert({
@@ -174,7 +269,6 @@ export const importLeadsCsv = createServerFn({ method: "POST" })
       .single();
     if (runErr || !run) return { ok: false, inserted: 0, skipped: 0, error: runErr?.message };
 
-    // Geo lookup caches
     const { data: states } = await supabase.from("geo_states").select("code,name");
     const stateByName = new Map((states ?? []).map((s) => [s.name.toLowerCase(), s.code]));
     const stateByCode = new Map((states ?? []).map((s) => [s.code.toUpperCase(), s.code]));
