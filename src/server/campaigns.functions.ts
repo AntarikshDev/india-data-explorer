@@ -15,6 +15,8 @@ const CreateCampaignSchema = z.object({
   resultsPerSource: z.number().int().min(5).max(50).default(25),
   startStateCode: z.string().min(2).max(3),
   startDistrictId: z.string().uuid().optional().nullable(),
+  pinDistrictId: z.string().uuid().optional().nullable(),
+  pinLocalityId: z.string().uuid().optional().nullable(),
   stateCoverageThreshold: z.number().int().min(50).max(100).default(80),
   perDistrictCap: z.number().int().min(1).max(20).default(5),
   exhaustionStreak: z.number().int().min(1).max(10).default(3),
