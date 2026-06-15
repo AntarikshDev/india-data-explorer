@@ -127,19 +127,19 @@ function NewCampaignPage() {
         </div>
 
         <div className="space-y-2">
-          <Label>Start state</Label>
-          <Select value={stateCode} onValueChange={setStateCode}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {states.map((s) => (
-                <SelectItem key={s.code} value={s.code}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>Target area</Label>
+          <GeoPicker
+            value={geo}
+            onChange={(v) => {
+              setGeo(v);
+              if (v.stateCode) setStateCode(v.stateCode);
+            }}
+            defaultStateCode={stateCode}
+          />
+          <p className="text-xs text-muted-foreground">
+            Pick only a state to sweep all its districts. Pin a district to walk it sector-wise
+            (e.g. Gautam Buddh Nagar → each locality). Pin a locality to scrape just that area.
+          </p>
         </div>
 
         <div className="space-y-3">
