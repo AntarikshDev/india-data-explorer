@@ -15,6 +15,8 @@ const CreateCampaignSchema = z.object({
   resultsPerSource: z.number().int().min(5).max(50).default(25),
   startStateCode: z.string().min(2).max(3),
   startDistrictId: z.string().uuid().optional().nullable(),
+  pinDistrictId: z.string().uuid().optional().nullable(),
+  pinLocalityId: z.string().uuid().optional().nullable(),
   stateCoverageThreshold: z.number().int().min(50).max(100).default(80),
   perDistrictCap: z.number().int().min(1).max(20).default(5),
   exhaustionStreak: z.number().int().min(1).max(10).default(3),
@@ -37,7 +39,9 @@ export const createCampaign = createServerFn({ method: "POST" })
         results_per_source: data.resultsPerSource,
         start_state_code: data.startStateCode,
         current_state_code: data.startStateCode,
-        current_district_id: data.startDistrictId ?? null,
+        current_district_id: data.startDistrictId ?? data.pinDistrictId ?? null,
+        pin_district_id: data.pinDistrictId ?? null,
+        pin_locality_id: data.pinLocalityId ?? null,
         state_coverage_threshold: data.stateCoverageThreshold,
         per_district_cap: data.perDistrictCap,
         exhaustion_streak: data.exhaustionStreak,
@@ -238,23 +242,101 @@ export const runCampaignOnce = createServerFn({ method: "POST" })
       return { ok: false, error: `Daily cap of ${c.daily_target_cap} reached` };
     }
 
-    // Coverage check before picking
-    const cov = await computeStateCoverage(supabase, userId, c.id, c.current_state_code ?? c.start_state_code);
-    if (cov.pct >= c.state_coverage_threshold) {
-      await supabase
-        .from("campaigns")
-        .update({ status: "awaiting_next_state" })
-        .eq("id", c.id);
-      await supabase.from("notifications").insert({
-        user_id: userId,
-        kind: "state_expand",
-        title: `${c.current_state_code ?? c.start_state_code} is ${cov.pct}% covered`,
-        body: `Campaign "${c.name}" hit your ${c.state_coverage_threshold}% coverage threshold (${cov.covered}/${cov.total} districts). Pick the next state to continue.`,
-        payload: { campaignId: c.id, coverage: cov },
-      });
-      return { ok: false, error: "STATE_COVERED", coverage: cov };
+    // Coverage check only applies to free-roaming state sweeps.
+    if (!c.pin_district_id && !c.pin_locality_id) {
+      const cov = await computeStateCoverage(supabase, userId, c.id, c.current_state_code ?? c.start_state_code);
+      if (cov.pct >= c.state_coverage_threshold) {
+        await supabase
+          .from("campaigns")
+          .update({ status: "awaiting_next_state" })
+          .eq("id", c.id);
+        await supabase.from("notifications").insert({
+          user_id: userId,
+          kind: "state_expand",
+          title: `${c.current_state_code ?? c.start_state_code} is ${cov.pct}% covered`,
+          body: `Campaign "${c.name}" hit your ${c.state_coverage_threshold}% coverage threshold (${cov.covered}/${cov.total} districts). Pick the next state to continue.`,
+          payload: { campaignId: c.id, coverage: cov },
+        });
+        return { ok: false, error: "STATE_COVERED", coverage: cov };
+      }
     }
 
+    // ===== Pinned locality: always scrape that one locality =====
+    if (c.pin_locality_id) {
+      const { data: loc } = await supabase
+        .from("geo_localities")
+        .select("id, name, district_id")
+        .eq("id", c.pin_locality_id)
+        .maybeSingle();
+      if (!loc) return { ok: false, error: "Pinned locality not found" };
+      const { data: dist } = await supabase
+        .from("geo_districts")
+        .select("id, name")
+        .eq("id", loc.district_id)
+        .maybeSingle();
+      return await launchTarget({
+        supabase, userId, campaign: c,
+        stateCode: c.current_state_code ?? c.start_state_code,
+        districtId: dist?.id ?? null,
+        districtName: dist?.name ?? null,
+        localityId: loc.id,
+        localityName: loc.name,
+        cityForScrape: `${loc.name}, ${dist?.name ?? ""}`.replace(/,\s*$/, ""),
+      });
+    }
+
+    // ===== Pinned district: walk its localities sector-wise =====
+    if (c.pin_district_id) {
+      const { data: dist } = await supabase
+        .from("geo_districts")
+        .select("id, name")
+        .eq("id", c.pin_district_id)
+        .maybeSingle();
+      if (!dist) return { ok: false, error: "Pinned district not found" };
+
+      const { data: localities } = await supabase
+        .from("geo_localities")
+        .select("id, name")
+        .eq("district_id", dist.id)
+        .order("name");
+
+      if (localities && localities.length > 0) {
+        const { data: usedTargets } = await supabase
+          .from("campaign_targets")
+          .select("locality_id")
+          .eq("campaign_id", c.id)
+          .eq("user_id", userId)
+          .not("locality_id", "is", null);
+        const used = new Set((usedTargets ?? []).map((t: any) => t.locality_id));
+        const next = localities.find((l: any) => !used.has(l.id)) ?? null;
+        if (!next) {
+          await supabase.from("campaigns").update({ status: "awaiting_next_state" }).eq("id", c.id);
+          return { ok: false, error: "All localities in pinned district covered" };
+        }
+        return await launchTarget({
+          supabase, userId, campaign: c,
+          stateCode: c.current_state_code ?? c.start_state_code,
+          districtId: dist.id,
+          districtName: dist.name,
+          localityId: next.id,
+          localityName: next.name,
+          cityForScrape: `${next.name}, ${dist.name}`,
+        });
+      }
+
+      // No localities seeded — just scrape the district directly
+      return await launchTarget({
+        supabase, userId, campaign: c,
+        stateCode: c.current_state_code ?? c.start_state_code,
+        districtId: dist.id,
+        districtName: dist.name,
+        localityId: null,
+        localityName: null,
+        cityForScrape: dist.name,
+      });
+    }
+
+    // ===== Default: walk districts across the state =====
     const next = await pickNextDistrict({
       supabase,
       userId,
@@ -272,80 +354,90 @@ export const runCampaignOnce = createServerFn({ method: "POST" })
       return { ok: false, error: "All districts exhausted in current state" };
     }
 
-    // Insert the target row first
-    const { data: target, error: tErr } = await supabase
-      .from("campaign_targets")
-      .insert({
-        user_id: userId,
-        campaign_id: c.id,
-        state_code: c.current_state_code ?? c.start_state_code,
-        district_id: next.id,
-        district_name: next.name,
-        status: "running",
-        ran_at: new Date().toISOString(),
-      })
-      .select("id")
-      .single();
-    if (tErr || !target) return { ok: false, error: tErr?.message ?? "Target insert failed" };
-
-    // Kick off a scrape using the campaign's query + district name as city
-    const runRes = await createScrapeRun({
-      data: {
-        query: c.query_template,
-        city: next.name,
-        sources: c.sources as Source[],
-        resultsPerSource: c.results_per_source,
-      },
+    return await launchTarget({
+      supabase, userId, campaign: c,
+      stateCode: c.current_state_code ?? c.start_state_code,
+      districtId: next.id,
+      districtName: next.name,
+      localityId: null,
+      localityName: null,
+      cityForScrape: next.name,
     });
-    if (!runRes.runId) {
+  });
+
+// Shared launcher: insert target row, kick off scrape, finalize asynchronously.
+// Keeps the underlying scraping pipeline (createScrapeRun + executeScrapeRun) untouched.
+async function launchTarget(opts: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any;
+  userId: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  campaign: any;
+  stateCode: string;
+  districtId: string | null;
+  districtName: string | null;
+  localityId: string | null;
+  localityName: string | null;
+  cityForScrape: string;
+}) {
+  const { supabase, userId, campaign: c } = opts;
+
+  const { data: target, error: tErr } = await supabase
+    .from("campaign_targets")
+    .insert({
+      user_id: userId,
+      campaign_id: c.id,
+      state_code: opts.stateCode,
+      district_id: opts.districtId,
+      district_name: opts.districtName,
+      locality_id: opts.localityId,
+      locality_name: opts.localityName,
+      status: "running",
+      ran_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+  if (tErr || !target) return { ok: false, error: tErr?.message ?? "Target insert failed" };
+
+  const runRes = await createScrapeRun({
+    data: {
+      query: c.query_template,
+      city: opts.cityForScrape,
+      sources: c.sources as Source[],
+      resultsPerSource: c.results_per_source,
+    },
+  });
+  if (!runRes.runId) {
+    await supabase.from("campaign_targets").update({ status: "failed" }).eq("id", target.id);
+    return { ok: false, error: runRes.error ?? "Scrape start failed" };
+  }
+
+  const runId: string = runRes.runId;
+  await supabase.from("campaign_targets").update({ scrape_run_id: runId }).eq("id", target.id);
+
+  executeScrapeRun({ data: { runId } })
+    .then(async (res) => {
+      const { count } = await supabase
+        .from("leads")
+        .select("*", { count: "exact", head: true })
+        .eq("run_id", runId)
+        .eq("user_id", userId);
       await supabase
         .from("campaign_targets")
-        .update({ status: "failed" })
+        .update({ status: res.ok ? "done" : "failed", leads_inserted: count ?? 0 })
         .eq("id", target.id);
-      return { ok: false, error: runRes.error ?? "Scrape start failed" };
-    }
+      await supabase
+        .from("campaigns")
+        .update({
+          current_district_id: opts.districtId ?? c.current_district_id,
+          last_run_at: new Date().toISOString(),
+        })
+        .eq("id", c.id);
+    })
+    .catch(async () => {
+      await supabase.from("campaign_targets").update({ status: "failed" }).eq("id", target.id);
+    });
 
-    const runId: string = runRes.runId;
-    await supabase
-      .from("campaign_targets")
-      .update({ scrape_run_id: runId })
-      .eq("id", target.id);
+  return { ok: true, runId, district: opts.districtName, locality: opts.localityName };
+}
 
-    // Fire-and-forget the scrape (UI polls)
-    executeScrapeRun({ data: { runId } })
-      .then(async (res) => {
-        // After scrape completes, count inserted leads and finalize
-        const { count } = await supabase
-          .from("leads")
-          .select("*", { count: "exact", head: true })
-          .eq("run_id", runId)
-          .eq("user_id", userId);
-        await supabase
-          .from("campaign_targets")
-          .update({
-            status: res.ok ? "done" : "failed",
-            leads_inserted: count ?? 0,
-          })
-          .eq("id", target.id);
-        await supabase
-          .from("campaigns")
-          .update({
-            current_district_id: next.id,
-            last_run_at: new Date().toISOString(),
-          })
-          .eq("id", c.id);
-      })
-      .catch(async () => {
-        await supabase
-          .from("campaign_targets")
-          .update({ status: "failed" })
-          .eq("id", target.id);
-      });
-
-    return {
-      ok: true,
-      runId: runRes.runId,
-      district: next.name,
-      coverage: cov,
-    };
-  });

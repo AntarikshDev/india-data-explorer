@@ -117,6 +117,8 @@ export type Database = {
           last_run_at: string | null
           name: string
           per_district_cap: number
+          pin_district_id: string | null
+          pin_locality_id: string | null
           query_template: string
           results_per_source: number
           schedule_enabled: boolean
@@ -137,6 +139,8 @@ export type Database = {
           last_run_at?: string | null
           name: string
           per_district_cap?: number
+          pin_district_id?: string | null
+          pin_locality_id?: string | null
           query_template: string
           results_per_source?: number
           schedule_enabled?: boolean
@@ -157,6 +161,8 @@ export type Database = {
           last_run_at?: string | null
           name?: string
           per_district_cap?: number
+          pin_district_id?: string | null
+          pin_locality_id?: string | null
           query_template?: string
           results_per_source?: number
           schedule_enabled?: boolean
@@ -167,7 +173,22 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_pin_district_id_fkey"
+            columns: ["pin_district_id"]
+            isOneToOne: false
+            referencedRelation: "geo_districts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_pin_locality_id_fkey"
+            columns: ["pin_locality_id"]
+            isOneToOne: false
+            referencedRelation: "geo_localities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_settings: {
         Row: {
