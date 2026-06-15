@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SOURCE_LABELS, type Source } from "@/lib/leadTypes";
+import { GeoPicker, emptyGeoSelection, type GeoSelection } from "@/components/GeoPicker";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
