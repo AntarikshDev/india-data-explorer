@@ -43,6 +43,7 @@ function NewCampaignPage() {
   const [perSource, setPerSource] = useState(25);
   const [states, setStates] = useState<{ code: string; name: string }[]>([]);
   const [stateCode, setStateCode] = useState("UP");
+  const [geo, setGeo] = useState<GeoSelection>(emptyGeoSelection);
   const [coverageThreshold, setCoverageThreshold] = useState(80);
   const [dailyCap, setDailyCap] = useState(5);
   const [perDistrictCap, setPerDistrictCap] = useState(5);
