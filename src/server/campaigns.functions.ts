@@ -242,21 +242,23 @@ export const runCampaignOnce = createServerFn({ method: "POST" })
       return { ok: false, error: `Daily cap of ${c.daily_target_cap} reached` };
     }
 
-    // Coverage check before picking
-    const cov = await computeStateCoverage(supabase, userId, c.id, c.current_state_code ?? c.start_state_code);
-    if (cov.pct >= c.state_coverage_threshold) {
-      await supabase
-        .from("campaigns")
-        .update({ status: "awaiting_next_state" })
-        .eq("id", c.id);
-      await supabase.from("notifications").insert({
-        user_id: userId,
-        kind: "state_expand",
-        title: `${c.current_state_code ?? c.start_state_code} is ${cov.pct}% covered`,
-        body: `Campaign "${c.name}" hit your ${c.state_coverage_threshold}% coverage threshold (${cov.covered}/${cov.total} districts). Pick the next state to continue.`,
-        payload: { campaignId: c.id, coverage: cov },
-      });
-      return { ok: false, error: "STATE_COVERED", coverage: cov };
+    // Coverage check only applies to free-roaming state sweeps.
+    if (!c.pin_district_id && !c.pin_locality_id) {
+      const cov = await computeStateCoverage(supabase, userId, c.id, c.current_state_code ?? c.start_state_code);
+      if (cov.pct >= c.state_coverage_threshold) {
+        await supabase
+          .from("campaigns")
+          .update({ status: "awaiting_next_state" })
+          .eq("id", c.id);
+        await supabase.from("notifications").insert({
+          user_id: userId,
+          kind: "state_expand",
+          title: `${c.current_state_code ?? c.start_state_code} is ${cov.pct}% covered`,
+          body: `Campaign "${c.name}" hit your ${c.state_coverage_threshold}% coverage threshold (${cov.covered}/${cov.total} districts). Pick the next state to continue.`,
+          payload: { campaignId: c.id, coverage: cov },
+        });
+        return { ok: false, error: "STATE_COVERED", coverage: cov };
+      }
     }
 
     // ===== Pinned locality: always scrape that one locality =====
