@@ -1,22 +1,14 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { AppShell } from "@/components/AppShell";
 import { createCampaign } from "@/server/campaigns.functions";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { SOURCE_LABELS, type Source } from "@/lib/leadTypes";
 import { GeoPicker, emptyGeoSelection, type GeoSelection } from "@/components/GeoPicker";
 import { toast } from "sonner";
@@ -41,7 +33,6 @@ function NewCampaignPage() {
   const [query, setQuery] = useState("");
   const [sources, setSources] = useState<Source[]>(["gmaps", "justdial"]);
   const [perSource, setPerSource] = useState(25);
-  const [states, setStates] = useState<{ code: string; name: string }[]>([]);
   const [stateCode, setStateCode] = useState("UP");
   const [geo, setGeo] = useState<GeoSelection>(emptyGeoSelection);
   const [coverageThreshold, setCoverageThreshold] = useState(80);
@@ -49,17 +40,10 @@ function NewCampaignPage() {
   const [perDistrictCap, setPerDistrictCap] = useState(5);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    supabase
-      .from("geo_states")
-      .select("code, name")
-      .order("name")
-      .then(({ data }) => setStates(data ?? []));
-  }, []);
-
   function toggleSrc(s: Source) {
     setSources((p) => (p.includes(s) ? p.filter((x) => x !== s) : [...p, s]));
   }
+
 
   async function submit() {
     if (!name.trim() || !query.trim() || sources.length === 0) {
