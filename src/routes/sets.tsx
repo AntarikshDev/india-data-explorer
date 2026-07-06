@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { GeoPicker, emptyGeoSelection, type GeoSelection } from "@/components/GeoPicker";
-import { listLeadSets, createLeadSet, deleteLeadSet } from "@/server/leadsets.functions";
+import { listLeadSets, createLeadSet, deleteLeadSet } from "@/lib/server-fns/leadsets.functions";
 import { toast } from "sonner";
 import { Trash2, Phone } from "lucide-react";
 

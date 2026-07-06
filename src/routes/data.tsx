@@ -20,8 +20,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { listLeads, listCampaignsWithLeadStats, updateLead, importLeadsCsv } from "@/server/leads.functions";
-import { listLeadSets } from "@/server/leadsets.functions";
+import { listLeads, listCampaignsWithLeadStats, updateLead, importLeadsCsv } from "@/lib/server-fns/leads.functions";
+import { listLeadSets } from "@/lib/server-fns/leadsets.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { SOURCE_LABELS, type Lead } from "@/lib/leadTypes";
 import { toast } from "sonner";

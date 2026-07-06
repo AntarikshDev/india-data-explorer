@@ -6,7 +6,7 @@ import {
   getCampaign,
   runCampaignOnce,
   updateCampaignStatus,
-} from "@/server/campaigns.functions";
+} from "@/lib/server-fns/campaigns.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
