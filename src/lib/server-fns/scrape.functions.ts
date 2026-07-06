@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-client-middleware";
-import { performScrapeRun } from "./scrape-core.server";
+import { performScrapeRun } from "@/server/scrape-core.server";
 import { StartSchema, ExecuteSchema } from "./scrape.schemas";
 import type { Source, RunProgress } from "@/lib/leadTypes";
 

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-client-middleware";
-import { haversineKm } from "./geo.server";
+import { haversineKm } from "@/server/geo.server";
 import { createScrapeRun, executeScrapeRun } from "./scrape.functions";
 import type { Source } from "@/lib/leadTypes";
 

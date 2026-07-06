@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-client-middleware";
-import { normalizeIndianMobile } from "./phone.server";
+import { normalizeIndianMobile } from "@/server/phone.server";
 
 const EDITABLE_FIELDS = [
   "name",
