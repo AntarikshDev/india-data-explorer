@@ -8,8 +8,8 @@ import {
   getTodayCallLog,
   updateCallNotes,
   type CallOutcome,
-} from "@/server/queue.functions";
-import { listLeadSets } from "@/server/leadsets.functions";
+} from "@/lib/server-fns/queue.functions";
+import { listLeadSets } from "@/lib/server-fns/leadsets.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { createScrapeRun } from "@/server/scrape.functions";
+import { createScrapeRun } from "@/lib/server-fns/scrape.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { GeoPicker, emptyGeoSelection, type GeoSelection } from "@/components/GeoPicker";
