@@ -5,7 +5,7 @@
 // All business logic (dedup, scoring, phone validation, progress streaming,
 // fallback to Firecrawl) lives here.
 
-import { scrapeSource, dedupeHash, scoreLead } from "./firecrawl.server";
+import { scrapeSource, dedupeHash, extractGoogleMapsCoordinates, scoreLead } from "./firecrawl.server";
 import { isCustomScraperEnabled, scrapeViaService } from "./scraperService.server";
 import { normalizeIndianMobile } from "./phone.server";
 import type { Source, RunProgress, SourceProgress } from "@/lib/leadTypes";
@@ -109,6 +109,12 @@ export async function performScrapeRun(opts: {
 
       const website = raw.business_website ?? null;
       const listing = raw.listing_url ?? null;
+      const coordinates = source === "gmaps"
+        ? {
+            latitude: raw.latitude ?? extractGoogleMapsCoordinates(listing).latitude,
+            longitude: raw.longitude ?? extractGoogleMapsCoordinates(listing).longitude,
+          }
+        : { latitude: null, longitude: null };
       const { score, reasons } = scoreLead(
         {
           phone: validPhone,
@@ -134,6 +140,8 @@ export async function performScrapeRun(opts: {
           reviews_count: raw.reviews_count ?? null,
           website,
           listing_url: listing,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
           source,
           source_url: sourceUrl,
           raw_json: raw as unknown as never,
