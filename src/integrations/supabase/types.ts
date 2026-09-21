@@ -397,9 +397,11 @@ export type Database = {
           email: string | null
           email_enriched: string | null
           id: string
+          latitude: number | null
           listing_url: string | null
           locality_id: string | null
           locality_name: string | null
+          longitude: number | null
           name: string | null
           notes: string | null
           owner_name: string | null
@@ -429,9 +431,11 @@ export type Database = {
           email?: string | null
           email_enriched?: string | null
           id?: string
+          latitude?: number | null
           listing_url?: string | null
           locality_id?: string | null
           locality_name?: string | null
+          longitude?: number | null
           name?: string | null
           notes?: string | null
           owner_name?: string | null
@@ -461,9 +465,11 @@ export type Database = {
           email?: string | null
           email_enriched?: string | null
           id?: string
+          latitude?: number | null
           listing_url?: string | null
           locality_id?: string | null
           locality_name?: string | null
+          longitude?: number | null
           name?: string | null
           notes?: string | null
           owner_name?: string | null
