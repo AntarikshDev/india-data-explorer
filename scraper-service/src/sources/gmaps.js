@@ -9,21 +9,6 @@ function titleCase(s) {
     .join(" ");
 }
 
-function extractCoordinates(url) {
-  if (!url) return { latitude: null, longitude: null };
-  const embedded = url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
-  const viewed = url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
-  const match = embedded || viewed;
-  if (!match) return { latitude: null, longitude: null };
-
-  const latitude = Number(match[1]);
-  const longitude = Number(match[2]);
-  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-    return { latitude: null, longitude: null };
-  }
-  return { latitude, longitude };
-}
-
 export async function scrapeGoogleMaps(page, { query, city, limit }) {
   const q = encodeURIComponent(city ? `${query} ${city}` : query);
   const sourceUrl = `https://www.google.com/maps/search/${q}/?hl=en`;
