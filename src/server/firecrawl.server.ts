@@ -14,6 +14,23 @@ export interface RawLead {
   reviews_count?: number;
   business_website?: string;
   listing_url?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+export function extractGoogleMapsCoordinates(url?: string | null): { latitude: number | null; longitude: number | null } {
+  if (!url) return { latitude: null, longitude: null };
+  const embedded = url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  const viewed = url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  const match = embedded ?? viewed;
+  if (!match) return { latitude: null, longitude: null };
+
+  const latitude = Number(match[1]);
+  const longitude = Number(match[2]);
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    return { latitude: null, longitude: null };
+  }
+  return { latitude, longitude };
 }
 
 const leadJsonSchema = {

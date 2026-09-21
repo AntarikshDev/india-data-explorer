@@ -9,6 +9,21 @@ function titleCase(s) {
     .join(" ");
 }
 
+function extractCoordinates(url) {
+  if (!url) return { latitude: null, longitude: null };
+  const embedded = url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  const viewed = url.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  const match = embedded || viewed;
+  if (!match) return { latitude: null, longitude: null };
+
+  const latitude = Number(match[1]);
+  const longitude = Number(match[2]);
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    return { latitude: null, longitude: null };
+  }
+  return { latitude, longitude };
+}
+
 export async function scrapeGoogleMaps(page, { query, city, limit }) {
   const q = encodeURIComponent(city ? `${query} ${city}` : query);
   const sourceUrl = `https://www.google.com/maps/search/${q}/?hl=en`;
@@ -73,7 +88,8 @@ export async function scrapeGoogleMaps(page, { query, city, limit }) {
         // Listing url (Google Maps detail link)
         const a = el.querySelector("a.hfpxzc");
         const listing_url = a ? a.href : null;
-        return { name, phone, rating, reviews_count, category, address, listing_url };
+        const coordinates = extractCoordinates(listing_url);
+        return { name, phone, rating, reviews_count, category, address, listing_url, ...coordinates };
       });
       if (data.name) {
         leads.push({
@@ -85,6 +101,8 @@ export async function scrapeGoogleMaps(page, { query, city, limit }) {
           address: data.address || undefined,
           city: city || undefined,
           listing_url: data.listing_url || undefined,
+          latitude: data.latitude ?? undefined,
+          longitude: data.longitude ?? undefined,
         });
       }
     } catch {

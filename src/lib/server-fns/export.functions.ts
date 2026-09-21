@@ -29,6 +29,8 @@ export const exportRunToExcel = createServerFn({ method: "POST" })
       { header: "Category", key: "category", width: 22 },
       { header: "Rating", key: "rating", width: 8 },
       { header: "Reviews", key: "reviews_count", width: 10 },
+      { header: "Latitude", key: "latitude", width: 14 },
+      { header: "Longitude", key: "longitude", width: 14 },
       { header: "Website", key: "website", width: 32 },
       { header: "Source", key: "source", width: 14 },
       { header: "Source URL", key: "source_url", width: 40 },
@@ -42,7 +44,7 @@ export const exportRunToExcel = createServerFn({ method: "POST" })
     };
     ws.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
     ws.views = [{ state: "frozen", ySplit: 1 }];
-    ws.autoFilter = { from: "A1", to: "L1" };
+    ws.autoFilter = { from: "A1", to: "N1" };
 
     // Force phone column to text
     ws.getColumn("phone").numFmt = "@";

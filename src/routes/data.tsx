@@ -148,7 +148,7 @@ function DataCentrePage() {
   }, []);
 
   function buildCsv(data: Lead[]) {
-    const headers = ["name", "phone", "email", "category", "city", "state_code", "district_name", "locality_name", "score", "source", "scraped_at"];
+    const headers = ["name", "phone", "email", "category", "city", "state_code", "district_name", "locality_name", "latitude", "longitude", "score", "source", "scraped_at"];
     return [
       headers.join(","),
       ...data.map((r) =>

@@ -21,6 +21,8 @@ export interface Lead {
   category: string | null;
   rating: number | null;
   reviews_count: number | null;
+  latitude: number | null;
+  longitude: number | null;
   website: string | null;
   listing_url: string | null;
   source: Source;
