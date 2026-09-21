@@ -51,6 +51,8 @@ const leadJsonSchema = {
           reviews_count: { type: "number" },
           business_website: { type: "string", description: "The business's own website (NOT the directory listing URL)" },
           listing_url: { type: "string", description: "URL of the listing page on the directory site" },
+          latitude: { type: "number", description: "Google Maps latitude in decimal degrees" },
+          longitude: { type: "number", description: "Google Maps longitude in decimal degrees" },
         },
       },
     },
