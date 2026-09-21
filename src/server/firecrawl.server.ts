@@ -97,11 +97,14 @@ function buildSourceUrl(source: Source, query: string, city: string | null, page
   }
 }
 
-function buildPrompt(opts: { limit: number; city: string | null; query: string }): string {
+function buildPrompt(opts: { limit: number; city: string | null; query: string; source: Source }): string {
   const cityClause = opts.city
     ? ` Only include businesses physically located in or directly serving "${opts.city}". Reject results from neighbouring cities.`
     : "";
-  return `Extract up to ${opts.limit} business listings matching "${opts.query}".${cityClause} For each listing return: name, phone (digits only), address, city, category, rating, reviews_count, business_website (the company's own site, NOT the directory page), and listing_url (the directory page URL). Skip ads, sponsored slots, and navigation items. Only real businesses visible in the listings.`;
+  const coordinates = opts.source === "gmaps"
+    ? " For Google Maps results, also return latitude and longitude as decimal numbers from each place's map location; use null when unavailable."
+    : "";
+  return `Extract up to ${opts.limit} business listings matching "${opts.query}".${cityClause} For each listing return: name, phone (digits only), address, city, category, rating, reviews_count, business_website (the company's own site, NOT the directory page), and listing_url (the directory page URL).${coordinates} Skip ads, sponsored slots, and navigation items. Only real businesses visible in the listings.`;
 }
 
 async function scrapeOnce(opts: {

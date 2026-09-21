@@ -95,7 +95,7 @@ export async function scrapeGoogleMaps(page, { query, city, limit }) {
         const parsedLongitude = coordinateMatch ? Number(coordinateMatch[2]) : null;
         const latitude = parsedLatitude !== null && parsedLatitude >= -90 && parsedLatitude <= 90 ? parsedLatitude : null;
         const longitude = parsedLongitude !== null && parsedLongitude >= -180 && parsedLongitude <= 180 ? parsedLongitude : null;
-        return { name, phone, rating, reviews_count, category, address, listing_url, ...coordinates };
+        return { name, phone, rating, reviews_count, category, address, listing_url, latitude, longitude };
       });
       if (data.name) {
         leads.push({
